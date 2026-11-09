@@ -57,7 +57,9 @@
             font: inherit;
         }
 
-        button {
+        button,
+        .botao {
+            display: inline-block;
             margin-top: 18px;
             background: #235bb5;
             color: white;
@@ -66,10 +68,20 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            text-decoration: none;
         }
 
-        button:hover {
+        button:hover,
+        .botao:hover {
             background: #19488f;
+        }
+
+        .botao-resultados {
+            background: #21683c;
+        }
+
+        .botao-resultados:hover {
+            background: #18542f;
         }
 
         .mensagem {
@@ -90,6 +102,7 @@
 
         .descricao {
             color: #657487;
+            line-height: 1.6;
         }
 
         .tabela {
@@ -114,6 +127,17 @@
             overflow-x: auto;
         }
 
+        .resultados {
+            background: #f0f3f7;
+            padding: 20px;
+            border-radius: 7px;
+            margin-top: 30px;
+        }
+
+        .resultados h2 {
+            margin-top: 0;
+        }
+
         .rodape {
             margin-top: 28px;
         }
@@ -121,10 +145,15 @@
         a {
             color: #235bb5;
         }
+
+        a.botao {
+            color: white;
+        }
     </style>
 </head>
 
 <body>
+
 <div class="container">
 
     <h1>Gerenciar convidados</h1>
@@ -165,6 +194,7 @@
                        id="tokenAdmin"
                        name="tokenAdmin"
                        maxlength="36"
+                       autocomplete="off"
                        required>
 
                 <button type="submit">
@@ -224,6 +254,7 @@
             <h2>Participantes cadastrados</h2>
 
             <c:choose>
+
                 <c:when test="${empty participantes}">
                     <p class="descricao">
                         Nenhum convidado cadastrado ainda.
@@ -233,7 +264,9 @@
                 <c:otherwise>
 
                     <div class="tabela-container">
+
                         <table class="tabela">
+
                             <thead>
                             <tr>
                                 <th>Nome</th>
@@ -243,8 +276,10 @@
                             </thead>
 
                             <tbody>
+
                             <c:forEach var="p"
                                        items="${participantes}">
+
                                 <tr>
                                     <td>
                                         <c:out value="${p.nome}"/>
@@ -265,24 +300,48 @@
                                         </c:choose>
                                     </td>
                                 </tr>
+
                             </c:forEach>
+
                             </tbody>
+
                         </table>
+
                     </div>
 
                 </c:otherwise>
+
             </c:choose>
+
+            <div class="resultados">
+
+                <h2>Resultados da reunião</h2>
+
+                <p class="descricao">
+                    Consulte a classificação dos horários
+                    considerando as respostas dos participantes.
+                </p>
+
+                <a class="botao botao-resultados"
+                   href="${pageContext.request.contextPath}/reunioes/resultado">
+                    Ver resultados da reunião
+                </a>
+
+            </div>
 
         </c:otherwise>
 
     </c:choose>
 
     <div class="rodape">
+
         <a href="${pageContext.request.contextPath}/reunioes/nova">
             Criar outra reunião
         </a>
+
     </div>
 
 </div>
+
 </body>
 </html>
