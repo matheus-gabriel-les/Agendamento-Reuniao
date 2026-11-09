@@ -13,9 +13,7 @@
     <title>Gerenciar convidados</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: Arial, sans-serif;
@@ -34,18 +32,14 @@
             box-shadow: 0 2px 12px #00000012;
         }
 
-        h1 {
-            margin-top: 0;
-        }
+        h1 { margin-top: 0; }
 
         h2 {
             margin-top: 28px;
             font-size: 21px;
         }
 
-        p {
-            line-height: 1.6;
-        }
+        p { line-height: 1.6; }
 
         label {
             display: block;
@@ -61,8 +55,7 @@
             font: inherit;
         }
 
-        button,
-        .botao {
+        button, .botao {
             display: inline-block;
             margin-top: 18px;
             padding: 12px 20px;
@@ -73,12 +66,14 @@
             cursor: pointer;
             font-weight: bold;
             text-decoration: none;
+            font: inherit;
         }
 
-        button:hover,
-        .botao:hover {
+        button:hover, .botao:hover {
             background: #19488f;
         }
+
+        a.botao { color: white; }
 
         .botao-copiar {
             margin-top: 8px;
@@ -86,11 +81,13 @@
             font-size: 13px;
         }
 
-        .botao-resultados {
+        .botao-resultados,
+        .botao-enviar {
             background: #21683c;
         }
 
-        .botao-resultados:hover {
+        .botao-resultados:hover,
+        .botao-enviar:hover {
             background: #18542f;
         }
 
@@ -108,7 +105,7 @@
         }
 
         .mensagem {
-            padding: 12px;
+            padding: 14px;
             border-radius: 5px;
             background: #e4f5e9;
             color: #21683c;
@@ -132,9 +129,7 @@
             color: #21683c;
         }
 
-        .confirmacao h2 {
-            margin-top: 0;
-        }
+        .confirmacao h2 { margin-top: 0; }
 
         .descricao {
             color: #657487;
@@ -150,8 +145,7 @@
             margin-top: 15px;
         }
 
-        .tabela th,
-        .tabela td {
+        .tabela th, .tabela td {
             padding: 12px;
             border-bottom: 1px solid #e4e7eb;
             text-align: left;
@@ -177,8 +171,11 @@
             background: #f0f3f7;
         }
 
-        .painel h2 {
-            margin-top: 0;
+        .painel h2 { margin-top: 0; }
+
+        .painel-email {
+            background: #edf7f0;
+            border: 1px solid #c8e4d0;
         }
 
         .painel-exclusao {
@@ -215,22 +212,20 @@
             margin-top: 28px;
         }
 
-        .acoes button {
-            margin-top: 0;
+        .acoes button { margin-top: 0; }
+
+        .estado {
+            font-size: 13px;
+            font-weight: bold;
         }
 
-        a {
-            color: #235bb5;
-        }
+        .enviado { color: #21683c; }
+        .pendente { color: #77571a; }
 
-        a.botao {
-            color: white;
-        }
+        a { color: #235bb5; }
 
         @media (max-width: 600px) {
-            .container {
-                padding: 20px;
-            }
+            .container { padding: 20px; }
         }
     </style>
 </head>
@@ -242,13 +237,13 @@
     <h1>Gerenciar convidados</h1>
 
     <c:if test="${not empty erro}">
-        <div class="erro">
+        <div class="erro" role="alert">
             <c:out value="${erro}"/>
         </div>
     </c:if>
 
     <c:if test="${not empty mensagem}">
-        <div class="mensagem">
+        <div class="mensagem" role="status">
             <c:out value="${mensagem}"/>
         </div>
     </c:if>
@@ -283,7 +278,6 @@
                 <button type="submit">
                     Acessar reunião
                 </button>
-
             </form>
 
         </c:when>
@@ -317,7 +311,6 @@
                 <c:when test="${finalizada}">
 
                     <div class="confirmacao">
-
                         <h2>Reunião finalizada!</h2>
 
                         <p>
@@ -326,8 +319,8 @@
                         </p>
 
                         <p>
-                            Não é possível adicionar ou remover
-                            participantes nem modificar
+                            Não é possível adicionar
+                            participantes ou modificar
                             suas disponibilidades.
                         </p>
 
@@ -335,7 +328,6 @@
                            href="${pageContext.request.contextPath}/reunioes/finalizar">
                             Consultar horário confirmado
                         </a>
-
                     </div>
 
                 </c:when>
@@ -353,7 +345,7 @@
 
                         <input type="hidden"
                                name="csrfToken"
-                               value="${csrfToken}">
+                               value="<c:out value='${csrfToken}'/>">
 
                         <label for="nome">
                             Nome do convidado
@@ -389,11 +381,9 @@
             <c:choose>
 
                 <c:when test="${empty participantes}">
-
                     <p class="descricao">
                         Nenhum participante cadastrado.
                     </p>
-
                 </c:when>
 
                 <c:otherwise>
@@ -401,60 +391,72 @@
                     <div class="tabela-container">
 
                         <table class="tabela">
-
                             <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>E-mail</th>
-                                <th>Respondeu?</th>
-                                <th>Convite individual</th>
-                            </tr>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>E-mail</th>
+                                    <th>Respondeu?</th>
+                                    <th>E-mail enviado?</th>
+                                    <th>Convite individual</th>
+                                </tr>
                             </thead>
 
                             <tbody>
 
-                            <c:forEach var="p"
-                                       items="${participantes}">
+                                <c:forEach var="p"
+                                           items="${participantes}">
 
-                                <tr>
+                                    <tr>
+                                        <td>
+                                            <c:out value="${p.nome}"/>
+                                        </td>
 
-                                    <td>
-                                        <c:out value="${p.nome}"/>
-                                    </td>
+                                        <td>
+                                            <c:out value="${p.email}"/>
+                                        </td>
 
-                                    <td>
-                                        <c:out value="${p.email}"/>
-                                    </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty p.respondidoEm}">
+                                                    Sim
+                                                </c:when>
+                                                <c:otherwise>
+                                                    Ainda não
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
 
-                                    <td>
-                                        <c:choose>
-                                            <c:when test="${not empty p.respondidoEm}">
-                                                Sim
-                                            </c:when>
-                                            <c:otherwise>
-                                                Ainda não
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty p.emailEnviadoEm}">
+                                                    <span class="estado enviado">
+                                                        Enviado
+                                                    </span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="estado pendente">
+                                                        Pendente
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
 
-                                    <td>
-                                        <span class="token">
-                                            <c:out value="${p.token}"/>
-                                        </span>
+                                        <td>
+                                            <span class="token">
+                                                <c:out value="${p.token}"/>
+                                            </span>
 
-                                        <button type="button"
-                                                class="botao-copiar"
-                                                onclick="copiarConvite(this)">
-                                            Copiar convite
-                                        </button>
-                                    </td>
+                                            <button type="button"
+                                                    class="botao-copiar"
+                                                    onclick="copiarConvite(this)">
+                                                Copiar convite
+                                            </button>
+                                        </td>
+                                    </tr>
 
-                                </tr>
-
-                            </c:forEach>
+                                </c:forEach>
 
                             </tbody>
-
                         </table>
 
                     </div>
@@ -470,7 +472,7 @@
 
             <div class="painel">
 
-                <h2>Compartilhar convites</h2>
+                <h2>Compartilhar convites manualmente</h2>
 
                 <p class="descricao">
                     Cada participante possui um token
@@ -485,8 +487,8 @@
                      id="enderecoDisponibilidade"><c:out value="${pageContext.request.contextPath}"/>/reunioes/disponibilidade</div>
 
                 <p class="descricao">
-                    Copie o convite correspondente a cada
-                    participante para compartilhá-lo manualmente.
+                    Copie o convite correspondente
+                    a cada participante.
                 </p>
 
                 <a class="botao"
@@ -495,6 +497,44 @@
                 </a>
 
             </div>
+
+            <c:if test="${not finalizada}">
+
+                <div class="painel painel-email">
+
+                    <h2>Enviar convites por e-mail</h2>
+
+                    <p>
+                        Envie um convite individual
+                        aos participantes que ainda
+                        não possuem envio registrado.
+                    </p>
+
+                    <p class="descricao">
+                        O sistema utiliza o modo
+                        de envio configurado no servidor.
+                        No modo de simulação, os convites
+                        aparecem apenas no console.
+                    </p>
+
+                    <form method="post"
+                          action="${pageContext.request.contextPath}/reunioes/enviar-convites"
+                          onsubmit="return confirm('Deseja processar os convites pendentes desta reunião?');">
+
+                        <input type="hidden"
+                               name="csrfToken"
+                               value="<c:out value='${csrfToken}'/>">
+
+                        <button type="submit"
+                                class="botao-enviar">
+                            Enviar convites pendentes
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </c:if>
 
             <div class="painel">
 
@@ -517,9 +557,9 @@
                 <strong>Importante:</strong>
 
                 <p>
-                    Os tokens individuais devem ser
-                    compartilhados somente com seus
-                    respectivos participantes.
+                    Compartilhe os tokens individuais
+                    somente com os participantes
+                    correspondentes.
                 </p>
 
                 <p>
@@ -528,8 +568,9 @@
                 </p>
 
                 <p>
-                    O sistema ainda não envia e-mails
-                    automaticamente.
+                    O status de envio representa
+                    os envios SMTP registrados pelo sistema.
+                    Uma simulação não altera esse status.
                 </p>
 
             </div>
@@ -541,11 +582,6 @@
                 <p>
                     Esta operação remove permanentemente
                     a reunião e todos os seus dados relacionados.
-                </p>
-
-                <p>
-                    Utilize esta opção somente quando
-                    realmente desejar apagar a reunião.
                 </p>
 
                 <a class="botao botao-excluir"
@@ -568,8 +604,8 @@
                            name="acao"
                            value="sair">
 
-                    <button class="botao-sair"
-                            type="submit">
+                    <button type="submit"
+                            class="botao-sair">
                         Sair do gerenciamento
                     </button>
 
@@ -619,12 +655,14 @@
         );
 
         try {
+
             await navigator.clipboard.writeText(convite);
 
             mensagem.textContent =
                 "Convite copiado com sucesso.";
 
         } catch (erro) {
+
             mensagem.textContent =
                 "Nao foi possivel copiar automaticamente. " +
                 "Copie o token e o endereco manualmente.";
