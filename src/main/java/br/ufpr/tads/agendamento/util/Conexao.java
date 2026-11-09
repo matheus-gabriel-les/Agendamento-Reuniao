@@ -11,15 +11,25 @@ public class Conexao {
             "jdbc:mysql://localhost:3306/agendamento_reunioes";
 
     public static Connection conectar() throws SQLException {
+
         String usuario = System.getenv("DB_USER");
         String senha = System.getenv("DB_PASSWORD");
 
-        if (usuario == null || senha == null) {
+        if (usuario == null || usuario.isBlank()
+                || senha == null || senha.isEmpty()) {
+
             throw new SQLException(
-                    "Configure DB_USER e DB_PASSWORD."
-            );
+                    "Configure DB_USER e DB_PASSWORD.");
         }
 
-        return DriverManager.getConnection(URL, usuario, senha);
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException(
+                    "Driver JDBC do MySQL nao encontrado.", e);
+        }
+
+        return DriverManager.getConnection(
+                URL, usuario, senha);
     }
 }
