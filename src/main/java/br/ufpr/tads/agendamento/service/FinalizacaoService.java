@@ -24,46 +24,56 @@ public class FinalizacaoService {
                     "Horario invalido.");
         }
 
-        String sqlHorario =
-                "SELECT id FROM horario "
-                + "WHERE id = ? AND reuniao_id = ?";
-
-        String sqlFinalizacao =
-                "INSERT INTO reuniao_finalizacao "
-                + "(reuniao_id, horario_id) VALUES (?, ?)";
-
         try (Connection conexao = Conexao.conectar()) {
 
-            try (PreparedStatement consulta =
-                    conexao.prepareStatement(sqlHorario)) {
+            conexao.setAutoCommit(false);
 
-                consulta.setLong(1, horarioId);
-                consulta.setLong(2, reuniaoId);
+            try {
 
-                try (ResultSet resultado =
-                        consulta.executeQuery()) {
+                bloquearReuniao(reuniaoId, conexao);
 
-                    if (!resultado.next()) {
-                        throw new IllegalArgumentException(
-                                "O horario nao pertence a reuniao.");
-                    }
-                }
-            }
+                if (buscarHorarioDefinitivo(
+                        reuniaoId, conexao) != null) {
 
-            try (PreparedStatement comando =
-                    conexao.prepareStatement(sqlFinalizacao)) {
-
-                comando.setLong(1, reuniaoId);
-                comando.setLong(2, horarioId);
-
-                comando.executeUpdate();
-
-            } catch (SQLIntegrityConstraintViolationException e) {
-
-                if (buscarHorarioDefinitivo(reuniaoId) != null) {
                     throw new IllegalArgumentException(
                             "Esta reuniao ja possui "
                             + "um horario definitivo.");
+                }
+
+                verificarHorario(
+                        reuniaoId,
+                        horarioId,
+                        conexao);
+
+                String sql =
+                        "INSERT INTO reuniao_finalizacao "
+                        + "(reuniao_id, horario_id) "
+                        + "VALUES (?, ?)";
+
+                try (PreparedStatement stmt =
+                        conexao.prepareStatement(sql)) {
+
+                    stmt.setLong(1, reuniaoId);
+                    stmt.setLong(2, horarioId);
+
+                    stmt.executeUpdate();
+
+                } catch (
+                        SQLIntegrityConstraintViolationException e) {
+
+                    throw new IllegalArgumentException(
+                            "Esta reuniao ja possui "
+                            + "um horario definitivo.", e);
+                }
+
+                conexao.commit();
+
+            } catch (SQLException | RuntimeException e) {
+
+                try {
+                    conexao.rollback();
+                } catch (SQLException erroRollback) {
+                    e.addSuppressed(erroRollback);
                 }
 
                 throw e;
@@ -85,20 +95,95 @@ public class FinalizacaoService {
                 + "WHERE reuniao_id = ?";
 
         try (Connection conexao = Conexao.conectar();
-             PreparedStatement comando =
+             PreparedStatement stmt =
                      conexao.prepareStatement(sql)) {
 
-            comando.setLong(1, reuniaoId);
+            stmt.setLong(1, reuniaoId);
 
-            try (ResultSet resultado =
-                    comando.executeQuery()) {
+            try (ResultSet rs = stmt.executeQuery()) {
 
-                if (resultado.next()) {
-                    return resultado.getLong("horario_id");
+                if (rs.next()) {
+                    return rs.getLong("horario_id");
                 }
             }
         }
 
         return null;
+    }
+
+    private Long buscarHorarioDefinitivo(
+            Long reuniaoId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT horario_id "
+                + "FROM reuniao_finalizacao "
+                + "WHERE reuniao_id = ? FOR UPDATE";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (rs.next()) {
+                    return rs.getLong("horario_id");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void bloquearReuniao(
+            Long reuniaoId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT id FROM reuniao "
+                + "WHERE id = ? FOR UPDATE";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new IllegalArgumentException(
+                            "Reuniao nao encontrada.");
+                }
+            }
+        }
+    }
+
+    private void verificarHorario(
+            Long reuniaoId,
+            Long horarioId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT id FROM horario "
+                + "WHERE id = ? AND reuniao_id = ?";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, horarioId);
+            stmt.setLong(2, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new IllegalArgumentException(
+                            "O horario nao pertence a reuniao.");
+                }
+            }
+        }
     }
 }

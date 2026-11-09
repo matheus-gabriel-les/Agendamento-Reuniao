@@ -1,6 +1,9 @@
 
 package br.ufpr.tads.agendamento.service;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -11,19 +14,18 @@ import br.ufpr.tads.agendamento.model.Disponibilidade;
 import br.ufpr.tads.agendamento.model.Horario;
 import br.ufpr.tads.agendamento.model.Participante;
 import br.ufpr.tads.agendamento.model.RespostaDisponibilidade;
+import br.ufpr.tads.agendamento.util.Conexao;
 
 public class DisponibilidadeService {
 
     private final DisponibilidadeDAOImpl disponibilidadeDAO;
     private final HorarioDAOImpl horarioDAO;
     private final ParticipanteDAOImpl participanteDAO;
-    private final FinalizacaoService finalizacaoService;
 
     public DisponibilidadeService() {
-        this.disponibilidadeDAO = new DisponibilidadeDAOImpl();
-        this.horarioDAO = new HorarioDAOImpl();
-        this.participanteDAO = new ParticipanteDAOImpl();
-        this.finalizacaoService = new FinalizacaoService();
+        disponibilidadeDAO = new DisponibilidadeDAOImpl();
+        horarioDAO = new HorarioDAOImpl();
+        participanteDAO = new ParticipanteDAOImpl();
     }
 
     public List<Horario> listarHorarios(String token)
@@ -50,47 +52,77 @@ public class DisponibilidadeService {
             RespostaDisponibilidade resposta)
             throws SQLException {
 
-        Participante participante = validarToken(token);
-
-        verificarReuniaoAberta(
-                participante.getReuniaoId());
-
-        if (horarioId == null || horarioId <= 0) {
-            throw new IllegalArgumentException(
-                    "Horario invalido.");
-        }
+        validarHorarioId(horarioId);
 
         if (resposta == null) {
             throw new IllegalArgumentException(
                     "A resposta e obrigatoria.");
         }
 
-        Horario horario = horarioDAO.buscarPorId(horarioId);
+        try (Connection conexao = Conexao.conectar()) {
 
-        if (horario == null) {
-            throw new IllegalArgumentException(
-                    "Horario nao encontrado.");
-        }
+            conexao.setAutoCommit(false);
 
-        if (!horario.getReuniaoId().equals(
-                participante.getReuniaoId())) {
+            try {
 
-            throw new IllegalArgumentException(
-                    "O horario nao pertence a reuniao "
-                    + "deste participante.");
-        }
+                Participante participante =
+                        buscarParticipante(token, conexao);
 
-        Disponibilidade disponibilidade =
-                new Disponibilidade(
-                        participante.getId(),
+                bloquearReuniao(
+                        participante.getReuniaoId(),
+                        conexao);
+
+                verificarReuniaoAberta(
+                        participante.getReuniaoId(),
+                        conexao);
+
+                verificarHorario(
                         horarioId,
-                        resposta
-                );
+                        participante.getReuniaoId(),
+                        conexao);
 
-        disponibilidadeDAO.salvar(disponibilidade);
+                String sql =
+                        "INSERT INTO disponibilidade "
+                        + "(participante_id, horario_id, resposta) "
+                        + "VALUES (?, ?, ?) "
+                        + "ON DUPLICATE KEY UPDATE "
+                        + "resposta = VALUES(resposta)";
 
-        participanteDAO.atualizarResposta(
-                participante.getId());
+                try (PreparedStatement stmt =
+                        conexao.prepareStatement(sql)) {
+
+                    stmt.setLong(1, participante.getId());
+                    stmt.setLong(2, horarioId);
+                    stmt.setString(3, resposta.name());
+
+                    stmt.executeUpdate();
+                }
+
+                String sqlAtualizacao =
+                        "UPDATE participante "
+                        + "SET respondido_em = CURRENT_TIMESTAMP "
+                        + "WHERE id = ?";
+
+                try (PreparedStatement stmt =
+                        conexao.prepareStatement(sqlAtualizacao)) {
+
+                    stmt.setLong(1, participante.getId());
+                    stmt.executeUpdate();
+                }
+
+                conexao.commit();
+
+            } catch (SQLException | RuntimeException e) {
+
+                try {
+                    conexao.rollback();
+                } catch (SQLException erroRollback) {
+                    e.addSuppressed(erroRollback);
+                }
+
+                throw e;
+            }
+        }
     }
 
     public void removerResposta(
@@ -98,54 +130,89 @@ public class DisponibilidadeService {
             Long horarioId)
             throws SQLException {
 
-        Participante participante = validarToken(token);
+        validarHorarioId(horarioId);
 
-        verificarReuniaoAberta(
-                participante.getReuniaoId());
+        try (Connection conexao = Conexao.conectar()) {
 
-        if (horarioId == null || horarioId <= 0) {
-            throw new IllegalArgumentException(
-                    "Horario invalido.");
-        }
+            conexao.setAutoCommit(false);
 
-        Horario horario = horarioDAO.buscarPorId(horarioId);
+            try {
 
-        if (horario == null
-                || !horario.getReuniaoId().equals(
-                        participante.getReuniaoId())) {
+                Participante participante =
+                        buscarParticipante(token, conexao);
 
-            throw new IllegalArgumentException(
-                    "Horario nao pertence a reuniao.");
-        }
+                bloquearReuniao(
+                        participante.getReuniaoId(),
+                        conexao);
 
-        List<Disponibilidade> respostas =
-                disponibilidadeDAO.listarPorParticipante(
-                        participante.getId());
+                verificarReuniaoAberta(
+                        participante.getReuniaoId(),
+                        conexao);
 
-        for (Disponibilidade disponibilidade : respostas) {
+                verificarHorario(
+                        horarioId,
+                        participante.getReuniaoId(),
+                        conexao);
 
-            if (disponibilidade.getHorarioId().equals(
-                    horarioId)) {
+                String sqlExcluir =
+                        "DELETE FROM disponibilidade "
+                        + "WHERE participante_id = ? "
+                        + "AND horario_id = ?";
 
-                disponibilidadeDAO.excluir(
-                        disponibilidade.getId());
+                try (PreparedStatement stmt =
+                        conexao.prepareStatement(sqlExcluir)) {
 
-                return;
+                    stmt.setLong(1, participante.getId());
+                    stmt.setLong(2, horarioId);
+
+                    stmt.executeUpdate();
+                }
+
+                String sqlContagem =
+                        "SELECT COUNT(*) "
+                        + "FROM disponibilidade "
+                        + "WHERE participante_id = ?";
+
+                long quantidadeRespostas;
+
+                try (PreparedStatement stmt =
+                        conexao.prepareStatement(sqlContagem)) {
+
+                    stmt.setLong(1, participante.getId());
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        rs.next();
+                        quantidadeRespostas = rs.getLong(1);
+                    }
+                }
+
+                if (quantidadeRespostas == 0) {
+
+                    String sqlLimpar =
+                            "UPDATE participante "
+                            + "SET respondido_em = NULL "
+                            + "WHERE id = ?";
+
+                    try (PreparedStatement stmt =
+                            conexao.prepareStatement(sqlLimpar)) {
+
+                        stmt.setLong(1, participante.getId());
+                        stmt.executeUpdate();
+                    }
+                }
+
+                conexao.commit();
+
+            } catch (SQLException | RuntimeException e) {
+
+                try {
+                    conexao.rollback();
+                } catch (SQLException erroRollback) {
+                    e.addSuppressed(erroRollback);
+                }
+
+                throw e;
             }
-        }
-    }
-
-    private void verificarReuniaoAberta(Long reuniaoId)
-            throws SQLException {
-
-        Long horarioDefinitivo =
-                finalizacaoService.buscarHorarioDefinitivo(
-                        reuniaoId);
-
-        if (horarioDefinitivo != null) {
-            throw new IllegalArgumentException(
-                    "Esta reuniao ja foi finalizada. "
-                    + "Nao e possivel alterar a disponibilidade.");
         }
     }
 
@@ -166,5 +233,135 @@ public class DisponibilidadeService {
         }
 
         return participante;
+    }
+
+    private Participante buscarParticipante(
+            String token,
+            Connection conexao)
+            throws SQLException {
+
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Token do participante invalido.");
+        }
+
+        String sql =
+                "SELECT id, reuniao_id "
+                + "FROM participante WHERE token = ?";
+
+        Long participanteId = null;
+        Long reuniaoId = null;
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setString(1, token.trim());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (rs.next()) {
+                    participanteId = rs.getLong("id");
+                    reuniaoId = rs.getLong("reuniao_id");
+                }
+            }
+        }
+
+        if (participanteId == null) {
+            throw new IllegalArgumentException(
+                    "Participante nao encontrado.");
+        }
+
+        Participante participante = new Participante();
+
+        participante.setId(participanteId);
+        participante.setReuniaoId(reuniaoId);
+
+        return participante;
+    }
+
+    private void bloquearReuniao(
+            Long reuniaoId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT id FROM reuniao "
+                + "WHERE id = ? FOR UPDATE";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new IllegalArgumentException(
+                            "Reuniao nao encontrada.");
+                }
+            }
+        }
+    }
+
+    private void verificarReuniaoAberta(
+            Long reuniaoId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT horario_id "
+                + "FROM reuniao_finalizacao "
+                + "WHERE reuniao_id = ?";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (rs.next()) {
+                    throw new IllegalArgumentException(
+                            "Esta reuniao ja foi finalizada. "
+                            + "Nao e possivel alterar "
+                            + "a disponibilidade.");
+                }
+            }
+        }
+    }
+
+    private void verificarHorario(
+            Long horarioId,
+            Long reuniaoId,
+            Connection conexao)
+            throws SQLException {
+
+        String sql =
+                "SELECT id FROM horario "
+                + "WHERE id = ? AND reuniao_id = ?";
+
+        try (PreparedStatement stmt =
+                conexao.prepareStatement(sql)) {
+
+            stmt.setLong(1, horarioId);
+            stmt.setLong(2, reuniaoId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new IllegalArgumentException(
+                            "O horario nao pertence a reuniao "
+                            + "deste participante.");
+                }
+            }
+        }
+    }
+
+    private void validarHorarioId(Long horarioId) {
+
+        if (horarioId == null || horarioId <= 0) {
+            throw new IllegalArgumentException(
+                    "Horario invalido.");
+        }
     }
 }

@@ -121,16 +121,13 @@
             margin-top: 0;
         }
 
-        .confirmacao p {
-            margin: 8px 0;
-        }
-
         .aviso {
             background: #fff7e6;
             color: #77571a;
             padding: 15px;
             border-radius: 6px;
             margin: 20px 0;
+            line-height: 1.6;
         }
 
         .tabela-container {
@@ -183,6 +180,10 @@
             color: #946200;
         }
 
+        .status-nao {
+            color: #a32626;
+        }
+
         .status-sem {
             color: #657487;
         }
@@ -219,13 +220,13 @@
     <h1>Minha disponibilidade</h1>
 
     <c:if test="${not empty erro}">
-        <div class="erro">
+        <div class="erro" role="alert">
             <c:out value="${erro}"/>
         </div>
     </c:if>
 
     <c:if test="${not empty mensagem}">
-        <div class="mensagem">
+        <div class="mensagem" role="status">
             <c:out value="${mensagem}"/>
         </div>
     </c:if>
@@ -247,6 +248,10 @@
                 <input type="hidden"
                        name="acao"
                        value="acessar">
+
+                <input type="hidden"
+                       name="csrfToken"
+                       value="<c:out value='${csrfToken}'/>">
 
                 <label for="token">
                     Token do participante
@@ -348,8 +353,8 @@
 
                 <div class="aviso">
                     Esta reunião já foi finalizada.
-                    As respostas anteriores podem ser
-                    consultadas, mas não podem mais ser alteradas.
+                    As respostas anteriores podem ser consultadas,
+                    mas não podem mais ser alteradas.
                 </div>
 
             </c:if>
@@ -367,9 +372,11 @@
 
             <c:if test="${not finalizada}">
                 <p class="descricao">
-                    Selecione SIM quando puder participar,
-                    TALVEZ quando não tiver certeza ou
-                    Sem resposta para remover sua seleção.
+                    Escolha SIM quando puder participar,
+                    TALVEZ quando ainda não tiver certeza
+                    ou NÃO quando não puder participar.
+                    Escolha Sem resposta para remover
+                    uma seleção anterior.
                     Clique em Salvar em cada horário alterado.
                 </p>
             </c:if>
@@ -391,136 +398,147 @@
                         <table>
 
                             <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Período</th>
-                                <th>Início</th>
-                                <th>Fim</th>
-                                <th>Disponibilidade</th>
-                            </tr>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Período</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Disponibilidade</th>
+                                </tr>
                             </thead>
 
                             <tbody>
 
-                            <c:forEach var="horario"
-                                       items="${horarios}">
+                                <c:forEach var="horario"
+                                           items="${horarios}">
 
-                                <tr>
+                                    <tr>
 
-                                    <td>
-                                        <c:out value="${horario.dia}"/>
-                                    </td>
+                                        <td>
+                                            <c:out value="${horario.dia}"/>
+                                        </td>
 
-                                    <td>
-                                        <c:choose>
-                                            <c:when test="${not empty horario.periodo}">
-                                                <c:out value="${horario.periodo}"/>
-                                            </c:when>
-                                            <c:otherwise>-</c:otherwise>
-                                        </c:choose>
-                                    </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty horario.periodo}">
+                                                    <c:out value="${horario.periodo}"/>
+                                                </c:when>
+                                                <c:otherwise>-</c:otherwise>
+                                            </c:choose>
+                                        </td>
 
-                                    <td>
-                                        <c:choose>
-                                            <c:when test="${not empty horario.horaInicio}">
-                                                <c:out value="${horario.horaInicio}"/>
-                                            </c:when>
-                                            <c:otherwise>-</c:otherwise>
-                                        </c:choose>
-                                    </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty horario.horaInicio}">
+                                                    <c:out value="${horario.horaInicio}"/>
+                                                </c:when>
+                                                <c:otherwise>-</c:otherwise>
+                                            </c:choose>
+                                        </td>
 
-                                    <td>
-                                        <c:choose>
-                                            <c:when test="${not empty horario.horaFim}">
-                                                <c:out value="${horario.horaFim}"/>
-                                            </c:when>
-                                            <c:otherwise>-</c:otherwise>
-                                        </c:choose>
-                                    </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty horario.horaFim}">
+                                                    <c:out value="${horario.horaFim}"/>
+                                                </c:when>
+                                                <c:otherwise>-</c:otherwise>
+                                            </c:choose>
+                                        </td>
 
-                                    <td>
+                                        <td>
 
-                                        <c:choose>
+                                            <c:choose>
 
-                                            <c:when test="${finalizada}">
+                                                <c:when test="${finalizada}">
 
-                                                <c:choose>
-                                                    <c:when test="${respostasPorHorario[horario.id] eq 'SIM'}">
-                                                        <span class="status status-sim">
-                                                            SIM
-                                                        </span>
-                                                    </c:when>
+                                                    <c:choose>
 
-                                                    <c:when test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
-                                                        <span class="status status-talvez">
-                                                            TALVEZ
-                                                        </span>
-                                                    </c:when>
+                                                        <c:when test="${respostasPorHorario[horario.id] eq 'SIM'}">
+                                                            <span class="status status-sim">
+                                                                SIM
+                                                            </span>
+                                                        </c:when>
 
-                                                    <c:otherwise>
-                                                        <span class="status status-sem">
-                                                            Sem resposta
-                                                        </span>
-                                                    </c:otherwise>
-                                                </c:choose>
+                                                        <c:when test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
+                                                            <span class="status status-talvez">
+                                                                TALVEZ
+                                                            </span>
+                                                        </c:when>
 
-                                            </c:when>
+                                                        <c:when test="${respostasPorHorario[horario.id] eq 'NAO'}">
+                                                            <span class="status status-nao">
+                                                                NÃO
+                                                            </span>
+                                                        </c:when>
 
-                                            <c:otherwise>
+                                                        <c:otherwise>
+                                                            <span class="status status-sem">
+                                                                Sem resposta
+                                                            </span>
+                                                        </c:otherwise>
 
-                                                <form class="resposta-form"
-                                                      method="post"
-                                                      action="${pageContext.request.contextPath}/reunioes/disponibilidade">
+                                                    </c:choose>
 
-                                                    <input type="hidden"
-                                                           name="acao"
-                                                           value="responder">
+                                                </c:when>
 
-                                                    <input type="hidden"
-                                                           name="horarioId"
-                                                           value="${horario.id}">
+                                                <c:otherwise>
 
-                                                    <select name="resposta"
-                                                            aria-label="Disponibilidade do horário">
+                                                    <form class="resposta-form"
+                                                          method="post"
+                                                          action="${pageContext.request.contextPath}/reunioes/disponibilidade">
 
-                                                        <option value="REMOVER"
-                                                            <c:if test="${empty respostasPorHorario[horario.id]}">
-                                                                selected
-                                                            </c:if>>
-                                                            Sem resposta
-                                                        </option>
+                                                        <input type="hidden"
+                                                               name="acao"
+                                                               value="responder">
 
-                                                        <option value="SIM"
-                                                            <c:if test="${respostasPorHorario[horario.id] eq 'SIM'}">
-                                                                selected
-                                                            </c:if>>
-                                                            SIM
-                                                        </option>
+                                                        <input type="hidden"
+                                                               name="csrfToken"
+                                                               value="<c:out value='${csrfToken}'/>">
 
-                                                        <option value="TALVEZ"
-                                                            <c:if test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
-                                                                selected
-                                                            </c:if>>
-                                                            TALVEZ
-                                                        </option>
+                                                        <input type="hidden"
+                                                               name="horarioId"
+                                                               value="${horario.id}">
 
-                                                    </select>
+                                                        <select name="resposta"
+                                                                aria-label="Disponibilidade do horário">
 
-                                                    <button type="submit">
-                                                        Salvar
-                                                    </button>
+                                                            <option value="REMOVER"
+                                                                ${empty respostasPorHorario[horario.id] ? 'selected' : ''}>
+                                                                Sem resposta
+                                                            </option>
 
-                                                </form>
+                                                            <option value="SIM"
+                                                                ${respostasPorHorario[horario.id] eq 'SIM' ? 'selected' : ''}>
+                                                                SIM
+                                                            </option>
 
-                                            </c:otherwise>
+                                                            <option value="TALVEZ"
+                                                                ${respostasPorHorario[horario.id] eq 'TALVEZ' ? 'selected' : ''}>
+                                                                TALVEZ
+                                                            </option>
 
-                                        </c:choose>
+                                                            <option value="NAO"
+                                                                ${respostasPorHorario[horario.id] eq 'NAO' ? 'selected' : ''}>
+                                                                NÃO
+                                                            </option>
 
-                                    </td>
+                                                        </select>
 
-                                </tr>
+                                                        <button type="submit">
+                                                            Salvar
+                                                        </button>
 
-                            </c:forEach>
+                                                    </form>
+
+                                                </c:otherwise>
+
+                                            </c:choose>
+
+                                        </td>
+
+                                    </tr>
+
+                                </c:forEach>
 
                             </tbody>
 
@@ -540,6 +558,10 @@
                     <input type="hidden"
                            name="acao"
                            value="sair">
+
+                    <input type="hidden"
+                           name="csrfToken"
+                           value="<c:out value='${csrfToken}'/>">
 
                     <button class="sair" type="submit">
                         Sair

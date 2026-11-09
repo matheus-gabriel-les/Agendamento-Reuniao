@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import br.ufpr.tads.agendamento.dao.jdbc.HorarioDAOImpl;
 import br.ufpr.tads.agendamento.model.Disponibilidade;
@@ -15,6 +16,7 @@ import br.ufpr.tads.agendamento.model.RespostaDisponibilidade;
 import br.ufpr.tads.agendamento.service.DisponibilidadeService;
 import br.ufpr.tads.agendamento.service.FinalizacaoService;
 import br.ufpr.tads.agendamento.service.ParticipanteService;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -44,8 +46,24 @@ public class DisponibilidadeServlet extends HttpServlet {
             throws ServletException, IOException {
 
         response.setCharacterEncoding("UTF-8");
+        response.setHeader("Cache-Control", "no-store");
 
-        HttpSession sessao = request.getSession(false);
+        HttpSession sessao = request.getSession();
+
+        String csrfToken =
+                (String) sessao.getAttribute(
+                        "csrfDisponibilidade");
+
+        if (csrfToken == null) {
+            csrfToken = UUID.randomUUID().toString();
+
+            sessao.setAttribute(
+                    "csrfDisponibilidade",
+                    csrfToken);
+        }
+
+        request.setAttribute("csrfToken", csrfToken);
+
         String token = obterToken(sessao);
 
         if (token == null) {
@@ -80,8 +98,7 @@ public class DisponibilidadeServlet extends HttpServlet {
             for (Disponibilidade disponibilidade : respostas) {
                 respostasPorHorario.put(
                         disponibilidade.getHorarioId(),
-                        disponibilidade.getResposta().name()
-                );
+                        disponibilidade.getResposta().name());
             }
 
             Long horarioDefinitivoId =
@@ -123,7 +140,9 @@ public class DisponibilidadeServlet extends HttpServlet {
                     sessao.getAttribute("mensagemDisponibilidade");
 
             if (mensagem != null) {
-                request.setAttribute("mensagem", mensagem);
+                request.setAttribute(
+                        "mensagem",
+                        mensagem);
 
                 sessao.removeAttribute(
                         "mensagemDisponibilidade");
@@ -156,6 +175,15 @@ public class DisponibilidadeServlet extends HttpServlet {
             throws ServletException, IOException {
 
         request.setCharacterEncoding("UTF-8");
+
+        HttpSession sessao = request.getSession(false);
+
+        if (!csrfValido(request, sessao)) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Formulario invalido ou expirado.");
+            return;
+        }
 
         String acao = request.getParameter("acao");
 
@@ -191,7 +219,7 @@ public class DisponibilidadeServlet extends HttpServlet {
                     "erro",
                     "Informe o token do participante.");
 
-            abrirPagina(request, response);
+            doGet(request, response);
             return;
         }
 
@@ -206,7 +234,7 @@ public class DisponibilidadeServlet extends HttpServlet {
                         "erro",
                         "Token do participante invalido.");
 
-                abrirPagina(request, response);
+                doGet(request, response);
                 return;
             }
 
@@ -218,6 +246,8 @@ public class DisponibilidadeServlet extends HttpServlet {
                     "tokenParticipante",
                     token);
 
+            sessao.removeAttribute("csrfDisponibilidade");
+
             response.sendRedirect(
                     request.getContextPath()
                     + "/reunioes/disponibilidade");
@@ -225,7 +255,7 @@ public class DisponibilidadeServlet extends HttpServlet {
         } catch (IllegalArgumentException e) {
             request.setAttribute("erro", e.getMessage());
 
-            abrirPagina(request, response);
+            doGet(request, response);
 
         } catch (SQLException e) {
             registrarErro(e);
@@ -234,7 +264,7 @@ public class DisponibilidadeServlet extends HttpServlet {
                     "erro",
                     "Nao foi possivel acessar a reuniao.");
 
-            abrirPagina(request, response);
+            doGet(request, response);
         }
     }
 
@@ -260,13 +290,10 @@ public class DisponibilidadeServlet extends HttpServlet {
             String valor = request.getParameter("resposta");
 
             if ("REMOVER".equals(valor)) {
-
                 disponibilidadeService.removerResposta(
                         token,
                         horarioId);
-
             } else {
-
                 RespostaDisponibilidade resposta =
                         RespostaDisponibilidade.valueOf(valor);
 
@@ -289,9 +316,7 @@ public class DisponibilidadeServlet extends HttpServlet {
 
             request.setAttribute(
                     "erro",
-                    e instanceof IllegalArgumentException
-                        ? e.getMessage()
-                        : "Horario ou resposta invalida.");
+                    "Confira o horario e a resposta informados.");
 
             doGet(request, response);
 
@@ -315,11 +340,32 @@ public class DisponibilidadeServlet extends HttpServlet {
 
         if (sessao != null) {
             sessao.removeAttribute("tokenParticipante");
+            sessao.removeAttribute("csrfDisponibilidade");
+            sessao.removeAttribute("mensagemDisponibilidade");
         }
 
         response.sendRedirect(
                 request.getContextPath()
                 + "/reunioes/disponibilidade");
+    }
+
+    private boolean csrfValido(
+            HttpServletRequest request,
+            HttpSession sessao) {
+
+        if (sessao == null) {
+            return false;
+        }
+
+        Object esperado =
+                sessao.getAttribute("csrfDisponibilidade");
+
+        String recebido =
+                request.getParameter("csrfToken");
+
+        return esperado instanceof String
+                && recebido != null
+                && esperado.equals(recebido);
     }
 
     private String obterToken(HttpSession sessao) {
@@ -349,7 +395,6 @@ public class DisponibilidadeServlet extends HttpServlet {
     }
 
     private void registrarErro(SQLException e) {
-
         getServletContext().log(
                 "Erro na disponibilidade do participante", e);
     }

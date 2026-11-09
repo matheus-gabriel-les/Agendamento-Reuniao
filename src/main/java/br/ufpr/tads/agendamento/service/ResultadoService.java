@@ -24,10 +24,10 @@ public class ResultadoService {
     private final DisponibilidadeDAOImpl disponibilidadeDAO;
 
     public ResultadoService() {
-        this.reuniaoDAO = new ReuniaoDAOImpl();
-        this.horarioDAO = new HorarioDAOImpl();
-        this.participanteDAO = new ParticipanteDAOImpl();
-        this.disponibilidadeDAO = new DisponibilidadeDAOImpl();
+        reuniaoDAO = new ReuniaoDAOImpl();
+        horarioDAO = new HorarioDAOImpl();
+        participanteDAO = new ParticipanteDAOImpl();
+        disponibilidadeDAO = new DisponibilidadeDAOImpl();
     }
 
     public List<ResultadoHorario> calcular(Long reuniaoId)
@@ -62,21 +62,32 @@ public class ResultadoService {
 
             int sim = 0;
             int talvez = 0;
+            int nao = 0;
 
             for (Disponibilidade disponibilidade
                     : disponibilidades) {
 
-                if (disponibilidade.getResposta()
-                        == RespostaDisponibilidade.SIM) {
+                RespostaDisponibilidade resposta =
+                        disponibilidade.getResposta();
+
+                if (resposta == RespostaDisponibilidade.SIM) {
+
                     sim++;
-                } else if (disponibilidade.getResposta()
+
+                } else if (resposta
                         == RespostaDisponibilidade.TALVEZ) {
+
                     talvez++;
+
+                } else if (resposta
+                        == RespostaDisponibilidade.NAO) {
+
+                    nao++;
                 }
             }
 
             int semResposta =
-                    totalParticipantes - sim - talvez;
+                    totalParticipantes - sim - talvez - nao;
 
             if (semResposta < 0) {
                 throw new IllegalStateException(
@@ -88,12 +99,15 @@ public class ResultadoService {
                             horario,
                             sim,
                             talvez,
-                            semResposta
-                    );
+                            nao,
+                            semResposta);
 
             resultados.add(resultado);
         }
 
+        // Prioriza mais respostas SIM.
+        // Em seguida, mais respostas TALVEZ.
+        // Em caso de empate, usa a data e o ID.
         resultados.sort(
                 Comparator.comparingInt(
                         ResultadoHorario::getQuantidadeSim)

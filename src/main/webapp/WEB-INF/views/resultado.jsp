@@ -26,7 +26,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1050px;
             margin: 0 auto;
             background: white;
             padding: 30px;
@@ -169,6 +169,22 @@
             color: #235bb5;
         }
 
+        .status-sim {
+            color: #21683c;
+        }
+
+        .status-talvez {
+            color: #946200;
+        }
+
+        .status-nao {
+            color: #a32626;
+        }
+
+        .status-sem {
+            color: #657487;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -299,6 +315,11 @@
                     </p>
 
                     <p>
+                        <strong>Indisponíveis (NÃO):</strong>
+                        <c:out value="${melhor.quantidadeNao}"/>
+                    </p>
+
+                    <p>
                         <strong>Sem resposta registrada:</strong>
                         <c:out value="${melhor.quantidadeSemResposta}"/>
                     </p>
@@ -312,76 +333,81 @@
                     <table>
 
                         <thead>
-                        <tr>
-                            <th>Posição</th>
-                            <th>Data</th>
-                            <th>Período</th>
-                            <th>Início</th>
-                            <th>Fim</th>
-                            <th>SIM</th>
-                            <th>TALVEZ</th>
-                            <th>Sem resposta</th>
-                        </tr>
+                            <tr>
+                                <th>Posição</th>
+                                <th>Data</th>
+                                <th>Período</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>SIM</th>
+                                <th>TALVEZ</th>
+                                <th>NÃO</th>
+                                <th>Sem resposta</th>
+                            </tr>
                         </thead>
 
                         <tbody>
 
-                        <c:forEach var="resultado"
-                                   items="${resultados}"
-                                   varStatus="status">
+                            <c:forEach var="resultado"
+                                       items="${resultados}"
+                                       varStatus="status">
 
-                            <tr class="${status.first ? 'primeiro' : ''}">
+                                <tr class="${status.first ? 'primeiro' : ''}">
 
-                                <td>
-                                    <c:out value="${status.count}"/>
-                                </td>
+                                    <td>
+                                        <c:out value="${status.count}"/>
+                                    </td>
 
-                                <td>
-                                    <c:out value="${resultado.horario.dia}"/>
-                                </td>
+                                    <td>
+                                        <c:out value="${resultado.horario.dia}"/>
+                                    </td>
 
-                                <td>
-                                    <c:choose>
-                                        <c:when test="${not empty resultado.horario.periodo}">
-                                            <c:out value="${resultado.horario.periodo}"/>
-                                        </c:when>
-                                        <c:otherwise>-</c:otherwise>
-                                    </c:choose>
-                                </td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${not empty resultado.horario.periodo}">
+                                                <c:out value="${resultado.horario.periodo}"/>
+                                            </c:when>
+                                            <c:otherwise>-</c:otherwise>
+                                        </c:choose>
+                                    </td>
 
-                                <td>
-                                    <c:choose>
-                                        <c:when test="${not empty resultado.horario.horaInicio}">
-                                            <c:out value="${resultado.horario.horaInicio}"/>
-                                        </c:when>
-                                        <c:otherwise>-</c:otherwise>
-                                    </c:choose>
-                                </td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${not empty resultado.horario.horaInicio}">
+                                                <c:out value="${resultado.horario.horaInicio}"/>
+                                            </c:when>
+                                            <c:otherwise>-</c:otherwise>
+                                        </c:choose>
+                                    </td>
 
-                                <td>
-                                    <c:choose>
-                                        <c:when test="${not empty resultado.horario.horaFim}">
-                                            <c:out value="${resultado.horario.horaFim}"/>
-                                        </c:when>
-                                        <c:otherwise>-</c:otherwise>
-                                    </c:choose>
-                                </td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${not empty resultado.horario.horaFim}">
+                                                <c:out value="${resultado.horario.horaFim}"/>
+                                            </c:when>
+                                            <c:otherwise>-</c:otherwise>
+                                        </c:choose>
+                                    </td>
 
-                                <td class="numero">
-                                    <c:out value="${resultado.quantidadeSim}"/>
-                                </td>
+                                    <td class="numero status-sim">
+                                        <c:out value="${resultado.quantidadeSim}"/>
+                                    </td>
 
-                                <td class="numero">
-                                    <c:out value="${resultado.quantidadeTalvez}"/>
-                                </td>
+                                    <td class="numero status-talvez">
+                                        <c:out value="${resultado.quantidadeTalvez}"/>
+                                    </td>
 
-                                <td class="numero">
-                                    <c:out value="${resultado.quantidadeSemResposta}"/>
-                                </td>
+                                    <td class="numero status-nao">
+                                        <c:out value="${resultado.quantidadeNao}"/>
+                                    </td>
 
-                            </tr>
+                                    <td class="numero status-sem">
+                                        <c:out value="${resultado.quantidadeSemResposta}"/>
+                                    </td>
 
-                        </c:forEach>
+                                </tr>
+
+                            </c:forEach>
 
                         </tbody>
 
@@ -400,9 +426,9 @@
                     </p>
 
                     <p>
-                        Uma ausência de resposta registrada
-                        não significa necessariamente que
-                        o participante esteja indisponível.
+                        A opção NÃO indica indisponibilidade explícita.
+                        Sem resposta significa que o participante
+                        ainda não registrou uma escolha nesse horário.
                     </p>
 
                     <p>
