@@ -26,7 +26,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 950px;
             margin: 0 auto;
             background: white;
             padding: 30px;
@@ -41,6 +41,10 @@
         h2 {
             margin-top: 28px;
             font-size: 21px;
+        }
+
+        p {
+            line-height: 1.6;
         }
 
         label {
@@ -84,6 +88,12 @@
             background: #18542f;
         }
 
+        .botao-copiar {
+            margin-top: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
         .mensagem {
             padding: 12px;
             border-radius: 5px;
@@ -102,7 +112,10 @@
 
         .descricao {
             color: #657487;
-            line-height: 1.6;
+        }
+
+        .tabela-container {
+            overflow-x: auto;
         }
 
         .tabela {
@@ -116,26 +129,51 @@
             padding: 12px;
             border-bottom: 1px solid #e4e7eb;
             text-align: left;
-            overflow-wrap: anywhere;
+            vertical-align: top;
         }
 
         .tabela th {
             background: #f4f6f9;
         }
 
-        .tabela-container {
-            overflow-x: auto;
+        .tabela td {
+            overflow-wrap: anywhere;
         }
 
-        .resultados {
-            background: #f0f3f7;
+        .token {
+            display: block;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .painel {
+            margin-top: 30px;
             padding: 20px;
             border-radius: 7px;
-            margin-top: 30px;
+            background: #f0f3f7;
         }
 
-        .resultados h2 {
+        .painel h2 {
             margin-top: 0;
+        }
+
+        .aviso {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff7e6;
+            border-radius: 6px;
+            color: #77571a;
+            line-height: 1.6;
+        }
+
+        .endereco {
+            font-family: monospace;
+            overflow-wrap: anywhere;
+            padding: 12px;
+            background: white;
+            border: 1px solid #d9e1ec;
+            border-radius: 5px;
         }
 
         .rodape {
@@ -148,6 +186,12 @@
 
         a.botao {
             color: white;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
         }
     </style>
 </head>
@@ -175,8 +219,8 @@
         <c:when test="${empty reuniao}">
 
             <p class="descricao">
-                Informe o token administrativo
-                para acessar uma reunião.
+                Informe o token administrativo para
+                acessar o gerenciamento da reunião.
             </p>
 
             <form method="post"
@@ -256,9 +300,11 @@
             <c:choose>
 
                 <c:when test="${empty participantes}">
+
                     <p class="descricao">
-                        Nenhum convidado cadastrado ainda.
+                        Nenhum participante cadastrado.
                     </p>
+
                 </c:when>
 
                 <c:otherwise>
@@ -272,6 +318,7 @@
                                 <th>Nome</th>
                                 <th>E-mail</th>
                                 <th>Respondeu?</th>
+                                <th>Convite individual</th>
                             </tr>
                             </thead>
 
@@ -299,6 +346,18 @@
                                             </c:otherwise>
                                         </c:choose>
                                     </td>
+
+                                    <td>
+                                        <span class="token">
+                                            <c:out value="${p.token}"/>
+                                        </span>
+
+                                        <button type="button"
+                                                class="botao-copiar"
+                                                onclick="copiarConvite(this)">
+                                            Copiar convite
+                                        </button>
+                                    </td>
                                 </tr>
 
                             </c:forEach>
@@ -309,23 +368,79 @@
 
                     </div>
 
+                    <p id="mensagemCopia"
+                       class="descricao"
+                       role="status"
+                       aria-live="polite"></p>
+
                 </c:otherwise>
 
             </c:choose>
 
-            <div class="resultados">
+            <div class="painel">
+
+                <h2>Compartilhar convites</h2>
+
+                <p class="descricao">
+                    Cada participante possui um token
+                    individual para registrar suas respostas.
+                </p>
+
+                <p>
+                    <strong>Endereço para responder:</strong>
+                </p>
+
+                <div class="endereco"
+                     id="enderecoDisponibilidade"><c:out value="${pageContext.request.contextPath}"/>/reunioes/disponibilidade</div>
+
+                <p class="descricao">
+                    Utilize o botão Copiar convite ao lado
+                    de cada participante. O convite contém
+                    o endereço de acesso e o token individual.
+                </p>
+
+                <a class="botao"
+                   href="${pageContext.request.contextPath}/reunioes/disponibilidade">
+                    Abrir página de disponibilidade
+                </a>
+
+            </div>
+
+            <div class="painel">
 
                 <h2>Resultados da reunião</h2>
 
                 <p class="descricao">
-                    Consulte a classificação dos horários
-                    considerando as respostas dos participantes.
+                    Consulte os horários com maior
+                    disponibilidade entre os participantes.
                 </p>
 
                 <a class="botao botao-resultados"
                    href="${pageContext.request.contextPath}/reunioes/resultado">
                     Ver resultados da reunião
                 </a>
+
+            </div>
+
+            <div class="aviso">
+
+                <strong>Importante:</strong>
+
+                <p>
+                    Compartilhe cada token apenas com
+                    o participante correspondente.
+                </p>
+
+                <p>
+                    Nunca compartilhe o token
+                    administrativo com os convidados.
+                </p>
+
+                <p>
+                    O sistema ainda não envia e-mails
+                    automaticamente. Os convites devem
+                    ser encaminhados manualmente.
+                </p>
 
             </div>
 
@@ -342,6 +457,45 @@
     </div>
 
 </div>
+
+<script>
+    async function copiarConvite(botao) {
+
+        const linha = botao.closest("tr");
+        const token = linha.querySelector(".token").textContent.trim();
+
+        const caminho = document.getElementById(
+            "enderecoDisponibilidade"
+        ).textContent.trim();
+
+        const endereco = new URL(
+            caminho,
+            window.location.origin
+        ).href;
+
+        const convite =
+            "Voce foi convidado para informar sua disponibilidade.\n\n" +
+            "Acesse: " + endereco + "\n\n" +
+            "Seu token individual: " + token + "\n\n" +
+            "Informe o token na pagina para responder.";
+
+        const mensagem = document.getElementById(
+            "mensagemCopia"
+        );
+
+        try {
+            await navigator.clipboard.writeText(convite);
+
+            mensagem.textContent =
+                "Convite copiado. Agora voce pode compartilha-lo.";
+
+        } catch (erro) {
+            mensagem.textContent =
+                "Nao foi possivel copiar automaticamente. " +
+                "Copie o token e o endereco manualmente.";
+        }
+    }
+</script>
 
 </body>
 </html>
