@@ -1,0 +1,240 @@
+
+package br.ufpr.tads.agendamento.servlet;
+
+import java.io.IOException;
+import java.sql.SQLException;
+
+import br.ufpr.tads.agendamento.dao.jdbc.ReuniaoDAOImpl;
+import br.ufpr.tads.agendamento.model.Reuniao;
+import br.ufpr.tads.agendamento.service.ParticipanteService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+@WebServlet("/reunioes/convidados")
+public class ParticipanteServlet extends HttpServlet {
+
+    private final ParticipanteService participanteService =
+            new ParticipanteService();
+
+    private final ReuniaoDAOImpl reuniaoDAO =
+            new ReuniaoDAOImpl();
+
+    @Override
+    protected void doGet(HttpServletRequest request,
+                         HttpServletResponse response)
+            throws ServletException, IOException {
+
+        response.setCharacterEncoding("UTF-8");
+
+        HttpSession sessao = request.getSession(false);
+
+        Long reuniaoId = obterReuniaoId(sessao);
+
+        if (reuniaoId == null) {
+            abrirPagina(request, response);
+            return;
+        }
+
+        try {
+            Reuniao reuniao =
+                    reuniaoDAO.buscarPorId(reuniaoId);
+
+            if (reuniao == null) {
+                sessao.removeAttribute("adminReuniaoId");
+
+                request.setAttribute("erro",
+                        "Reuniao nao encontrada.");
+
+                abrirPagina(request, response);
+                return;
+            }
+
+            request.setAttribute("reuniao", reuniao);
+
+            request.setAttribute("participantes",
+                    participanteService.listarPorReuniao(
+                            reuniaoId));
+
+            if (sessao != null) {
+                Object mensagem =
+                        sessao.getAttribute("mensagemConvidados");
+
+                if (mensagem != null) {
+                    request.setAttribute("mensagem", mensagem);
+                    sessao.removeAttribute("mensagemConvidados");
+                }
+            }
+
+            abrirPagina(request, response);
+
+        } catch (SQLException e) {
+            registrarErro(request, e);
+
+            request.setAttribute("erro",
+                    "Nao foi possivel consultar os convidados.");
+
+            abrirPagina(request, response);
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request,
+                          HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.setCharacterEncoding("UTF-8");
+
+        String acao = request.getParameter("acao");
+
+        if ("acessar".equals(acao)) {
+            acessarGerenciamento(request, response);
+            return;
+        }
+
+        if ("adicionar".equals(acao)) {
+            adicionarConvidado(request, response);
+            return;
+        }
+
+        response.sendError(
+                HttpServletResponse.SC_BAD_REQUEST,
+                "Acao invalida.");
+    }
+
+    private void acessarGerenciamento(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String tokenAdmin =
+                request.getParameter("tokenAdmin");
+
+        if (tokenAdmin == null || tokenAdmin.isBlank()) {
+            request.setAttribute("erro",
+                    "Informe o token administrativo.");
+
+            abrirPagina(request, response);
+            return;
+        }
+
+        try {
+            Reuniao reuniao =
+                    reuniaoDAO.buscarPorTokenAdmin(
+                            tokenAdmin.trim());
+
+            if (reuniao == null) {
+                request.setAttribute("erro",
+                        "Token administrativo invalido.");
+
+                abrirPagina(request, response);
+                return;
+            }
+
+            HttpSession sessao = request.getSession();
+
+            sessao.setAttribute(
+                    "adminReuniaoId",
+                    reuniao.getId());
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/reunioes/convidados");
+
+        } catch (SQLException e) {
+            registrarErro(request, e);
+
+            request.setAttribute("erro",
+                    "Nao foi possivel acessar a reuniao.");
+
+            abrirPagina(request, response);
+        }
+    }
+
+    private void adicionarConvidado(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        HttpSession sessao = request.getSession(false);
+
+        Long reuniaoId = obterReuniaoId(sessao);
+
+        if (reuniaoId == null) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Acesso administrativo necessario.");
+            return;
+        }
+
+        String nome = request.getParameter("nome");
+        String email = request.getParameter("email");
+
+        try {
+            participanteService.cadastrar(
+                    reuniaoId,
+                    nome,
+                    email,
+                    false
+            );
+
+            sessao.setAttribute(
+                    "mensagemConvidados",
+                    "Convidado cadastrado com sucesso!");
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/reunioes/convidados");
+
+        } catch (IllegalArgumentException e) {
+            request.setAttribute("erro", e.getMessage());
+
+            doGet(request, response);
+
+        } catch (SQLException e) {
+            registrarErro(request, e);
+
+            request.setAttribute("erro",
+                    "Nao foi possivel cadastrar o convidado.");
+
+            doGet(request, response);
+        }
+    }
+
+    private Long obterReuniaoId(HttpSession sessao) {
+
+        if (sessao == null) {
+            return null;
+        }
+
+        Object valor = sessao.getAttribute(
+                "adminReuniaoId");
+
+        if (valor instanceof Long) {
+            return (Long) valor;
+        }
+
+        return null;
+    }
+
+    private void abrirPagina(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.getRequestDispatcher(
+                "/WEB-INF/views/convidados.jsp")
+                .forward(request, response);
+    }
+
+    private void registrarErro(
+            HttpServletRequest request,
+            SQLException e) {
+
+        getServletContext().log(
+                "Erro no gerenciamento de convidados", e);
+    }
+}
