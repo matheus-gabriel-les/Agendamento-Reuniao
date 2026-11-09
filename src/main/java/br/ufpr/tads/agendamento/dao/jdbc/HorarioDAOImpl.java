@@ -21,13 +21,22 @@ public class HorarioDAOImpl implements HorarioDAO {
 
     @Override
     public void inserir(Horario horario) throws SQLException {
+
+        try (Connection conexao = Conexao.conectar()) {
+            inserir(horario, conexao);
+        }
+    }
+
+    // Insercao utilizando uma conexao compartilhada.
+    public void inserir(Horario horario, Connection conexao)
+            throws SQLException {
+
         String sql = "INSERT INTO horario "
                 + "(reuniao_id, dia, periodo, hora_inicio, hora_fim) "
                 + "VALUES (?, ?, ?, ?, ?)";
 
-        try (Connection conexao = Conexao.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(
-                     sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement stmt = conexao.prepareStatement(
+                sql, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setLong(1, horario.getReuniaoId());
             stmt.setDate(2, Date.valueOf(horario.getDia()));
@@ -39,13 +48,15 @@ public class HorarioDAOImpl implements HorarioDAO {
             }
 
             if (horario.getHoraInicio() != null) {
-                stmt.setTime(4, Time.valueOf(horario.getHoraInicio()));
+                stmt.setTime(4,
+                        Time.valueOf(horario.getHoraInicio()));
             } else {
                 stmt.setNull(4, Types.TIME);
             }
 
             if (horario.getHoraFim() != null) {
-                stmt.setTime(5, Time.valueOf(horario.getHoraFim()));
+                stmt.setTime(5,
+                        Time.valueOf(horario.getHoraFim()));
             } else {
                 stmt.setNull(5, Types.TIME);
             }
@@ -55,6 +66,9 @@ public class HorarioDAOImpl implements HorarioDAO {
             try (ResultSet rs = stmt.getGeneratedKeys()) {
                 if (rs.next()) {
                     horario.setId(rs.getLong(1));
+                } else {
+                    throw new SQLException(
+                            "Nao foi possivel obter o ID do horario.");
                 }
             }
         }
@@ -62,6 +76,7 @@ public class HorarioDAOImpl implements HorarioDAO {
 
     @Override
     public Horario buscarPorId(Long id) throws SQLException {
+
         String sql = "SELECT * FROM horario WHERE id = ?";
 
         try (Connection conexao = Conexao.conectar();
@@ -106,6 +121,7 @@ public class HorarioDAOImpl implements HorarioDAO {
 
     @Override
     public void excluir(Long id) throws SQLException {
+
         String sql = "DELETE FROM horario WHERE id = ?";
 
         try (Connection conexao = Conexao.conectar();
@@ -131,6 +147,7 @@ public class HorarioDAOImpl implements HorarioDAO {
     }
 
     private Horario converter(ResultSet rs) throws SQLException {
+
         Horario horario = new Horario();
 
         horario.setId(rs.getLong("id"));
@@ -138,16 +155,19 @@ public class HorarioDAOImpl implements HorarioDAO {
         horario.setDia(rs.getDate("dia").toLocalDate());
 
         String periodo = rs.getString("periodo");
+
         if (periodo != null) {
             horario.setPeriodo(Periodo.valueOf(periodo));
         }
 
         Time horaInicio = rs.getTime("hora_inicio");
+
         if (horaInicio != null) {
             horario.setHoraInicio(horaInicio.toLocalTime());
         }
 
         Time horaFim = rs.getTime("hora_fim");
+
         if (horaFim != null) {
             horario.setHoraFim(horaFim.toLocalTime());
         }

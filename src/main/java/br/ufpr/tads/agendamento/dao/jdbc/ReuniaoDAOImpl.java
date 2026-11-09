@@ -22,6 +22,16 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
 
     @Override
     public void inserir(Reuniao reuniao) throws SQLException {
+
+        try (Connection conexao = Conexao.conectar()) {
+            inserir(reuniao, conexao);
+        }
+    }
+
+    // Permite usar uma conexao compartilhada em transacoes.
+    public void inserir(Reuniao reuniao, Connection conexao)
+            throws SQLException {
+
         String sql = "INSERT INTO reuniao "
                 + "(titulo, descricao, local_reuniao, "
                 + "nome_proponente, email_proponente, "
@@ -30,9 +40,8 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
                 + "hora_fim, duracao_minutos) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection conexao = Conexao.conectar();
-             PreparedStatement stmt = conexao.prepareStatement(
-                     sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement stmt = conexao.prepareStatement(
+                sql, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setString(1, reuniao.getTitulo());
             stmt.setString(2, reuniao.getDescricao());
@@ -41,18 +50,26 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
             stmt.setString(5, reuniao.getEmailProponente());
             stmt.setString(6, reuniao.getTokenPublico());
             stmt.setString(7, reuniao.getTokenAdmin());
-            stmt.setDate(8, Date.valueOf(reuniao.getDataInicio()));
-            stmt.setDate(9, Date.valueOf(reuniao.getDataFim()));
-            stmt.setString(10, reuniao.getModoDivisao().name());
+
+            stmt.setDate(8,
+                    Date.valueOf(reuniao.getDataInicio()));
+
+            stmt.setDate(9,
+                    Date.valueOf(reuniao.getDataFim()));
+
+            stmt.setString(10,
+                    reuniao.getModoDivisao().name());
 
             if (reuniao.getHoraInicio() != null) {
-                stmt.setTime(11, Time.valueOf(reuniao.getHoraInicio()));
+                stmt.setTime(11,
+                        Time.valueOf(reuniao.getHoraInicio()));
             } else {
                 stmt.setNull(11, Types.TIME);
             }
 
             if (reuniao.getHoraFim() != null) {
-                stmt.setTime(12, Time.valueOf(reuniao.getHoraFim()));
+                stmt.setTime(12,
+                        Time.valueOf(reuniao.getHoraFim()));
             } else {
                 stmt.setNull(12, Types.TIME);
             }
@@ -68,6 +85,9 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
             try (ResultSet rs = stmt.getGeneratedKeys()) {
                 if (rs.next()) {
                     reuniao.setId(rs.getLong(1));
+                } else {
+                    throw new SQLException(
+                            "Nao foi possivel obter o ID da reuniao.");
                 }
             }
         }
@@ -75,6 +95,7 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
 
     @Override
     public Reuniao buscarPorId(Long id) throws SQLException {
+
         String sql = "SELECT * FROM reuniao WHERE id = ?";
 
         try (Connection conexao = Conexao.conectar();
@@ -95,14 +116,20 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
     @Override
     public Reuniao buscarPorTokenPublico(String token)
             throws SQLException {
-        String sql = "SELECT * FROM reuniao WHERE token_publico = ?";
+
+        String sql = "SELECT * FROM reuniao "
+                + "WHERE token_publico = ?";
+
         return buscarPorToken(sql, token);
     }
 
     @Override
     public Reuniao buscarPorTokenAdmin(String token)
             throws SQLException {
-        String sql = "SELECT * FROM reuniao WHERE token_admin = ?";
+
+        String sql = "SELECT * FROM reuniao "
+                + "WHERE token_admin = ?";
+
         return buscarPorToken(sql, token);
     }
 
@@ -126,9 +153,11 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
 
     @Override
     public List<Reuniao> listar() throws SQLException {
+
         List<Reuniao> reunioes = new ArrayList<>();
 
-        String sql = "SELECT * FROM reuniao ORDER BY criada_em DESC, id DESC";
+        String sql = "SELECT * FROM reuniao "
+                + "ORDER BY criada_em DESC, id DESC";
 
         try (Connection conexao = Conexao.conectar();
              PreparedStatement stmt = conexao.prepareStatement(sql);
@@ -144,6 +173,7 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
 
     @Override
     public void excluir(Long id) throws SQLException {
+
         String sql = "DELETE FROM reuniao WHERE id = ?";
 
         try (Connection conexao = Conexao.conectar();
@@ -154,34 +184,48 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
         }
     }
 
-    private Reuniao converter(ResultSet rs) throws SQLException {
+    private Reuniao converter(ResultSet rs)
+            throws SQLException {
+
         Reuniao reuniao = new Reuniao();
 
         reuniao.setId(rs.getLong("id"));
         reuniao.setTitulo(rs.getString("titulo"));
         reuniao.setDescricao(rs.getString("descricao"));
-        reuniao.setLocalReuniao(rs.getString("local_reuniao"));
-        reuniao.setNomeProponente(rs.getString("nome_proponente"));
-        reuniao.setEmailProponente(rs.getString("email_proponente"));
-        reuniao.setTokenPublico(rs.getString("token_publico"));
-        reuniao.setTokenAdmin(rs.getString("token_admin"));
+
+        reuniao.setLocalReuniao(
+                rs.getString("local_reuniao"));
+
+        reuniao.setNomeProponente(
+                rs.getString("nome_proponente"));
+
+        reuniao.setEmailProponente(
+                rs.getString("email_proponente"));
+
+        reuniao.setTokenPublico(
+                rs.getString("token_publico"));
+
+        reuniao.setTokenAdmin(
+                rs.getString("token_admin"));
 
         reuniao.setDataInicio(
                 rs.getDate("data_inicio").toLocalDate());
+
         reuniao.setDataFim(
                 rs.getDate("data_fim").toLocalDate());
 
         reuniao.setModoDivisao(
-                ModoDivisao.valueOf(rs.getString("modo_divisao")));
+                ModoDivisao.valueOf(
+                        rs.getString("modo_divisao")));
 
-        Time horaInicio = rs.getTime("hora_inicio");
-        if (horaInicio != null) {
-            reuniao.setHoraInicio(horaInicio.toLocalTime());
+        Time inicio = rs.getTime("hora_inicio");
+        if (inicio != null) {
+            reuniao.setHoraInicio(inicio.toLocalTime());
         }
 
-        Time horaFim = rs.getTime("hora_fim");
-        if (horaFim != null) {
-            reuniao.setHoraFim(horaFim.toLocalTime());
+        Time fim = rs.getTime("hora_fim");
+        if (fim != null) {
+            reuniao.setHoraFim(fim.toLocalTime());
         }
 
         int duracao = rs.getInt("duracao_minutos");
@@ -189,9 +233,9 @@ public class ReuniaoDAOImpl implements ReuniaoDAO {
             reuniao.setDuracaoMinutos(duracao);
         }
 
-        Timestamp criadaEm = rs.getTimestamp("criada_em");
-        if (criadaEm != null) {
-            reuniao.setCriadaEm(criadaEm.toLocalDateTime());
+        Timestamp criada = rs.getTimestamp("criada_em");
+        if (criada != null) {
+            reuniao.setCriadaEm(criada.toLocalDateTime());
         }
 
         return reuniao;
