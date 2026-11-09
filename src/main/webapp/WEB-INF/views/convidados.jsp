@@ -96,6 +96,15 @@
 
         .botao-sair {
             background: #657487;
+            margin-top: 0;
+        }
+
+        .botao-excluir {
+            background: #a32626;
+        }
+
+        .botao-excluir:hover {
+            background: #801b1b;
         }
 
         .mensagem {
@@ -170,6 +179,15 @@
 
         .painel h2 {
             margin-top: 0;
+        }
+
+        .painel-exclusao {
+            background: #fff1e9;
+            border: 1px solid #efc7b4;
+        }
+
+        .painel-exclusao h2 {
+            color: #a32626;
         }
 
         .endereco {
@@ -468,8 +486,7 @@
 
                 <p class="descricao">
                     Copie o convite correspondente a cada
-                    participante para compartilhá-lo
-                    manualmente.
+                    participante para compartilhá-lo manualmente.
                 </p>
 
                 <a class="botao"
@@ -514,6 +531,27 @@
                     O sistema ainda não envia e-mails
                     automaticamente.
                 </p>
+
+            </div>
+
+            <div class="painel painel-exclusao">
+
+                <h2>Excluir reunião</h2>
+
+                <p>
+                    Esta operação remove permanentemente
+                    a reunião e todos os seus dados relacionados.
+                </p>
+
+                <p>
+                    Utilize esta opção somente quando
+                    realmente desejar apagar a reunião.
+                </p>
+
+                <a class="botao botao-excluir"
+                   href="${pageContext.request.contextPath}/reunioes/excluir">
+                    Excluir reunião
+                </a>
 
             </div>
 
@@ -566,8 +604,7 @@
         const finalizada =
             document.querySelector(".confirmacao") !== null;
 
-        const texto =
-            finalizada
+        const texto = finalizada
             ? "A reuniao ja foi finalizada. Consulte o horario confirmado."
             : "Voce foi convidado para informar sua disponibilidade.";
 
