@@ -125,6 +125,17 @@
             color: #77571a;
         }
 
+        .finalizacao {
+            margin-top: 30px;
+            padding: 22px;
+            background: #eef3fa;
+            border-radius: 7px;
+        }
+
+        .finalizacao h2 {
+            margin-top: 0;
+        }
+
         .acoes {
             margin-top: 30px;
             display: flex;
@@ -145,6 +156,14 @@
 
         .botao:hover {
             background: #19488f;
+        }
+
+        .botao-finalizar {
+            background: #21683c;
+        }
+
+        .botao-finalizar:hover {
+            background: #18542f;
         }
 
         .link {
@@ -357,6 +376,7 @@
                 </div>
 
                 <div class="aviso">
+
                     <strong>Como funciona a classificação?</strong>
 
                     <p>
@@ -366,17 +386,37 @@
                     </p>
 
                     <p>
-                        Uma ausência de resposta não significa
-                        necessariamente que o participante
-                        esteja indisponível. A classificação
-                        é provisória e pode mudar quando
-                        novas respostas forem registradas.
+                        A ausência de resposta não significa
+                        necessariamente indisponibilidade.
                     </p>
+
                 </div>
 
             </c:otherwise>
 
         </c:choose>
+
+        <div class="finalizacao">
+
+            <h2>Definir horário definitivo</h2>
+
+            <p>
+                Após analisar os resultados, o proponente
+                pode escolher o horário em que a reunião
+                será realizada.
+            </p>
+
+            <p class="descricao">
+                Se a reunião já tiver sido finalizada,
+                você poderá consultar o horário confirmado.
+            </p>
+
+            <a class="botao botao-finalizar"
+               href="${pageContext.request.contextPath}/reunioes/finalizar">
+                Finalizar ou consultar reunião
+            </a>
+
+        </div>
 
     </c:if>
 

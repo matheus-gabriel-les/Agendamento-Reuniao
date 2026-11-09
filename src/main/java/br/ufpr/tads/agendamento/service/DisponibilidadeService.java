@@ -17,11 +17,13 @@ public class DisponibilidadeService {
     private final DisponibilidadeDAOImpl disponibilidadeDAO;
     private final HorarioDAOImpl horarioDAO;
     private final ParticipanteDAOImpl participanteDAO;
+    private final FinalizacaoService finalizacaoService;
 
     public DisponibilidadeService() {
         this.disponibilidadeDAO = new DisponibilidadeDAOImpl();
         this.horarioDAO = new HorarioDAOImpl();
         this.participanteDAO = new ParticipanteDAOImpl();
+        this.finalizacaoService = new FinalizacaoService();
     }
 
     public List<Horario> listarHorarios(String token)
@@ -42,11 +44,16 @@ public class DisponibilidadeService {
                 participante.getId());
     }
 
-    public void responder(String token, Long horarioId,
-                          RespostaDisponibilidade resposta)
+    public void responder(
+            String token,
+            Long horarioId,
+            RespostaDisponibilidade resposta)
             throws SQLException {
 
         Participante participante = validarToken(token);
+
+        verificarReuniaoAberta(
+                participante.getReuniaoId());
 
         if (horarioId == null || horarioId <= 0) {
             throw new IllegalArgumentException(
@@ -86,10 +93,15 @@ public class DisponibilidadeService {
                 participante.getId());
     }
 
-    public void removerResposta(String token, Long horarioId)
+    public void removerResposta(
+            String token,
+            Long horarioId)
             throws SQLException {
 
         Participante participante = validarToken(token);
+
+        verificarReuniaoAberta(
+                participante.getReuniaoId());
 
         if (horarioId == null || horarioId <= 0) {
             throw new IllegalArgumentException(
@@ -120,6 +132,20 @@ public class DisponibilidadeService {
 
                 return;
             }
+        }
+    }
+
+    private void verificarReuniaoAberta(Long reuniaoId)
+            throws SQLException {
+
+        Long horarioDefinitivo =
+                finalizacaoService.buscarHorarioDefinitivo(
+                        reuniaoId);
+
+        if (horarioDefinitivo != null) {
+            throw new IllegalArgumentException(
+                    "Esta reuniao ja foi finalizada. "
+                    + "Nao e possivel alterar a disponibilidade.");
         }
     }
 

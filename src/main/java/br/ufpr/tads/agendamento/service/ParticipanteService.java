@@ -13,14 +13,18 @@ public class ParticipanteService {
 
     private final ParticipanteDAOImpl participanteDAO;
     private final ReuniaoDAOImpl reuniaoDAO;
+    private final FinalizacaoService finalizacaoService;
 
     public ParticipanteService() {
         this.participanteDAO = new ParticipanteDAOImpl();
         this.reuniaoDAO = new ReuniaoDAOImpl();
+        this.finalizacaoService = new FinalizacaoService();
     }
 
     public Participante cadastrar(
-            Long reuniaoId, String nome, String email,
+            Long reuniaoId,
+            String nome,
+            String email,
             boolean proponente) throws SQLException {
 
         if (reuniaoId == null || reuniaoId <= 0) {
@@ -33,10 +37,13 @@ public class ParticipanteService {
                     "Reuniao nao encontrada.");
         }
 
+        verificarReuniaoAberta(reuniaoId);
+
         validarNome(nome);
         validarEmail(email);
 
-        String emailNormalizado = email.trim().toLowerCase();
+        String emailNormalizado =
+                email.trim().toLowerCase();
 
         if (emailJaCadastrado(reuniaoId, emailNormalizado)) {
             throw new IllegalArgumentException(
@@ -46,10 +53,15 @@ public class ParticipanteService {
         Participante participante = new Participante();
 
         participante.setReuniaoId(reuniaoId);
+
         participante.setNome(
                 nome == null ? null : nome.trim());
+
         participante.setEmail(emailNormalizado);
-        participante.setToken(UUID.randomUUID().toString());
+
+        participante.setToken(
+                UUID.randomUUID().toString());
+
         participante.setProponente(proponente);
 
         participanteDAO.inserir(participante);
@@ -93,7 +105,11 @@ public class ParticipanteService {
     public void registrarResposta(Long participanteId)
             throws SQLException {
 
-        verificarParticipante(participanteId);
+        Participante participante =
+                verificarParticipante(participanteId);
+
+        verificarReuniaoAberta(
+                participante.getReuniaoId());
 
         participanteDAO.atualizarResposta(participanteId);
     }
@@ -109,24 +125,51 @@ public class ParticipanteService {
     public void excluir(Long participanteId)
             throws SQLException {
 
-        verificarParticipante(participanteId);
+        Participante participante =
+                verificarParticipante(participanteId);
+
+        verificarReuniaoAberta(
+                participante.getReuniaoId());
 
         participanteDAO.excluir(participanteId);
     }
 
-    private void verificarParticipante(Long id)
+    private Participante verificarParticipante(Long id)
             throws SQLException {
 
-        if (id == null || id <= 0
-                || participanteDAO.buscarPorId(id) == null) {
-
+        if (id == null || id <= 0) {
             throw new IllegalArgumentException(
                     "Participante nao encontrado.");
+        }
+
+        Participante participante =
+                participanteDAO.buscarPorId(id);
+
+        if (participante == null) {
+            throw new IllegalArgumentException(
+                    "Participante nao encontrado.");
+        }
+
+        return participante;
+    }
+
+    private void verificarReuniaoAberta(Long reuniaoId)
+            throws SQLException {
+
+        Long horarioDefinitivo =
+                finalizacaoService.buscarHorarioDefinitivo(
+                        reuniaoId);
+
+        if (horarioDefinitivo != null) {
+            throw new IllegalArgumentException(
+                    "Esta reuniao ja foi finalizada. "
+                    + "Nao e possivel alterar os participantes.");
         }
     }
 
     private boolean emailJaCadastrado(
-            Long reuniaoId, String email) throws SQLException {
+            Long reuniaoId,
+            String email) throws SQLException {
 
         List<Participante> participantes =
                 participanteDAO.listarPorReuniao(reuniaoId);
@@ -144,7 +187,9 @@ public class ParticipanteService {
 
     private void validarNome(String nome) {
 
-        if (nome != null && nome.trim().length() > 100) {
+        if (nome != null
+                && nome.trim().length() > 100) {
+
             throw new IllegalArgumentException(
                     "O nome deve ter ate 100 caracteres.");
         }
