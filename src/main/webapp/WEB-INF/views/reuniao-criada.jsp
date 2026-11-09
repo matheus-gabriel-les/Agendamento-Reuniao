@@ -27,7 +27,7 @@
 
         .container {
             background: white;
-            max-width: 650px;
+            max-width: 700px;
             margin: 0 auto;
             padding: 30px;
             border-radius: 10px;
@@ -42,6 +42,10 @@
         h2 {
             margin-top: 28px;
             font-size: 21px;
+        }
+
+        p {
+            line-height: 1.6;
         }
 
         .informacao {
@@ -61,7 +65,18 @@
         .aviso {
             color: #8b3e18;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.6;
+        }
+
+        .painel {
+            margin-top: 24px;
+            padding: 18px;
+            background: #eef3fa;
+            border-radius: 6px;
+        }
+
+        .painel h2 {
+            margin-top: 0;
         }
 
         .acoes {
@@ -76,28 +91,45 @@
             padding: 12px 20px;
             background: #235bb5;
             color: white;
+            border: 0;
             border-radius: 5px;
             text-decoration: none;
             font-weight: bold;
             text-align: center;
+            cursor: pointer;
+            font: inherit;
         }
 
         .botao:hover {
             background: #19488f;
         }
 
+        .botao-publico {
+            background: #21683c;
+        }
+
+        .botao-publico:hover {
+            background: #18542f;
+        }
+
         .link {
             color: #235bb5;
-            text-decoration: underline;
             text-align: center;
         }
 
-        .observacao {
-            margin-top: 24px;
-            padding: 15px;
-            background: #eef3fa;
+        .endereco {
+            background: white;
+            padding: 12px;
+            border: 1px solid #d9e1ec;
             border-radius: 5px;
-            line-height: 1.5;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .mensagem {
+            margin-top: 10px;
+            color: #21683c;
         }
     </style>
 </head>
@@ -148,7 +180,7 @@
         <c:out value="${reuniao.modoDivisao}"/>
     </div>
 
-    <c:if test="${reuniao.modoDivisao == 'HORAS'}">
+    <c:if test="${reuniao.modoDivisao eq 'HORAS'}">
 
         <div class="informacao">
             <strong>Hora inicial:</strong>
@@ -174,6 +206,49 @@
         <c:out value="${reuniao.tokenPublico}"/>
     </div>
 
+    <c:url var="urlPublica"
+           value="/reunioes/resultado">
+        <c:param name="token"
+                 value="${reuniao.tokenPublico}"/>
+    </c:url>
+
+    <div class="painel">
+
+        <h2>Link público dos resultados</h2>
+
+        <p>
+            Compartilhe este endereço com quem
+            precisa consultar as disponibilidades
+            e o ranking dos horários.
+        </p>
+
+        <div class="endereco"
+             id="enderecoPublico">
+            <c:out value="${urlPublica}"/>
+        </div>
+
+        <div class="acoes">
+
+            <a class="botao botao-publico"
+               href="${urlPublica}">
+                Consultar resultados públicos
+            </a>
+
+            <button class="botao"
+                    type="button"
+                    onclick="copiarLinkPublico()">
+                Copiar link público
+            </button>
+
+        </div>
+
+        <p class="mensagem"
+           id="mensagemCopia"
+           role="status"
+           aria-live="polite"></p>
+
+    </div>
+
     <h2>Token administrativo</h2>
 
     <div class="token">
@@ -182,30 +257,28 @@
 
     <p class="aviso">
         Guarde o token administrativo em um local seguro.
-        Ele permite acessar o gerenciamento desta reunião.
-        Não compartilhe esse token com os convidados.
+        Ele permite gerenciar esta reunião.
+        Nunca compartilhe esse token com os convidados.
     </p>
 
-    <div class="observacao">
-        <strong>Próximo passo:</strong>
+    <div class="painel">
+
+        <h2>Gerenciamento da reunião</h2>
 
         <p>
-            Agora você pode cadastrar os participantes
-            que serão convidados para a reunião.
+            Utilize o token administrativo para
+            cadastrar convidados, consultar resultados
+            e definir o horário definitivo.
         </p>
-
-        <p>
-            Para acessar o gerenciamento, utilize
-            o token administrativo exibido acima.
-        </p>
-    </div>
-
-    <div class="acoes">
 
         <a class="botao"
            href="${pageContext.request.contextPath}/reunioes/convidados">
             Gerenciar convidados
         </a>
+
+    </div>
+
+    <div class="acoes">
 
         <a class="link"
            href="${pageContext.request.contextPath}/reunioes/nova">
@@ -215,6 +288,35 @@
     </div>
 
 </div>
+
+<script>
+    async function copiarLinkPublico() {
+
+        const caminho = document.getElementById(
+            "enderecoPublico"
+        ).textContent.trim();
+
+        const endereco = new URL(
+            caminho,
+            window.location.origin
+        ).href;
+
+        const mensagem = document.getElementById(
+            "mensagemCopia"
+        );
+
+        try {
+            await navigator.clipboard.writeText(endereco);
+
+            mensagem.textContent =
+                "Link publico copiado com sucesso!";
+
+        } catch (erro) {
+            mensagem.textContent =
+                "Nao foi possivel copiar automaticamente.";
+        }
+    }
+</script>
 
 </body>
 </html>

@@ -31,47 +31,100 @@ public class ResultadoServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
+        request.setCharacterEncoding("UTF-8");
         response.setCharacterEncoding("UTF-8");
 
-        HttpSession sessao = request.getSession(false);
+        response.setHeader(
+                "Cache-Control",
+                "no-store, no-cache, must-revalidate");
 
-        if (sessao == null) {
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/reunioes/convidados");
-            return;
-        }
+        response.setHeader(
+                "Referrer-Policy",
+                "no-referrer");
 
-        Object valor = sessao.getAttribute(
-                "adminReuniaoId");
+        String tokenPublico =
+                request.getParameter("token");
 
-        if (!(valor instanceof Long)) {
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/reunioes/convidados");
-            return;
-        }
-
-        Long reuniaoId = (Long) valor;
+        boolean acessoPublico =
+                tokenPublico != null;
 
         try {
-            Reuniao reuniao =
-                    reuniaoDAO.buscarPorId(reuniaoId);
+            Reuniao reuniao;
 
-            if (reuniao == null) {
-                sessao.removeAttribute("adminReuniaoId");
+            if (acessoPublico) {
 
-                response.sendRedirect(
-                        request.getContextPath()
-                        + "/reunioes/convidados");
-                return;
+                tokenPublico = tokenPublico.trim();
+
+                if (tokenPublico.isEmpty()) {
+                    response.sendError(
+                            HttpServletResponse.SC_BAD_REQUEST,
+                            "Informe um token publico valido.");
+                    return;
+                }
+
+                reuniao =
+                        reuniaoDAO.buscarPorTokenPublico(
+                                tokenPublico);
+
+                if (reuniao == null) {
+                    response.sendError(
+                            HttpServletResponse.SC_NOT_FOUND,
+                            "Reuniao nao encontrada.");
+                    return;
+                }
+
+            } else {
+
+                HttpSession sessao =
+                        request.getSession(false);
+
+                if (sessao == null) {
+                    response.sendRedirect(
+                            request.getContextPath()
+                            + "/reunioes/convidados");
+                    return;
+                }
+
+                Object valor =
+                        sessao.getAttribute("adminReuniaoId");
+
+                if (!(valor instanceof Long)) {
+                    response.sendRedirect(
+                            request.getContextPath()
+                            + "/reunioes/convidados");
+                    return;
+                }
+
+                Long reuniaoId = (Long) valor;
+
+                reuniao =
+                        reuniaoDAO.buscarPorId(reuniaoId);
+
+                if (reuniao == null) {
+                    sessao.removeAttribute("adminReuniaoId");
+
+                    response.sendRedirect(
+                            request.getContextPath()
+                            + "/reunioes/convidados");
+                    return;
+                }
             }
 
             List<ResultadoHorario> resultados =
-                    resultadoService.calcular(reuniaoId);
+                    resultadoService.calcular(
+                            reuniao.getId());
 
-            request.setAttribute("reuniao", reuniao);
-            request.setAttribute("resultados", resultados);
+            request.setAttribute(
+                    "reuniao",
+                    reuniao);
+
+            request.setAttribute(
+                    "resultados",
+                    resultados);
+
+            request.setAttribute(
+                    "acessoPublico",
+                    acessoPublico);
 
             request.getRequestDispatcher(
                     "/WEB-INF/views/resultado.jsp")
@@ -82,13 +135,9 @@ public class ResultadoServlet extends HttpServlet {
             getServletContext().log(
                     "Erro ao consultar resultados", e);
 
-            request.setAttribute(
-                    "erro",
+            response.sendError(
+                    HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Nao foi possivel consultar os resultados.");
-
-            request.getRequestDispatcher(
-                    "/WEB-INF/views/resultado.jsp")
-                    .forward(request, response);
         }
     }
 }

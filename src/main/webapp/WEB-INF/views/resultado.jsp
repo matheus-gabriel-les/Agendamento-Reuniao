@@ -39,7 +39,7 @@
         }
 
         h2 {
-            margin-top: 30px;
+            margin-top: 28px;
             font-size: 21px;
         }
 
@@ -109,14 +109,6 @@
             text-align: center;
         }
 
-        .erro {
-            padding: 12px;
-            border-radius: 5px;
-            background: #ffe8e8;
-            color: #a32626;
-            margin: 16px 0;
-        }
-
         .aviso {
             margin-top: 22px;
             padding: 15px;
@@ -134,6 +126,13 @@
 
         .finalizacao h2 {
             margin-top: 0;
+        }
+
+        .acesso {
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #657487;
         }
 
         .acoes {
@@ -184,16 +183,21 @@
 
     <h1>Resultados da reunião</h1>
 
+    <div class="acesso">
+        <c:choose>
+            <c:when test="${acessoPublico}">
+                Consulta pública
+            </c:when>
+            <c:otherwise>
+                Área administrativa
+            </c:otherwise>
+        </c:choose>
+    </div>
+
     <p class="descricao">
         Consulte os horários com maior disponibilidade
         entre os participantes cadastrados.
     </p>
-
-    <c:if test="${not empty erro}">
-        <div class="erro">
-            <c:out value="${erro}"/>
-        </div>
-    </c:if>
 
     <c:if test="${not empty reuniao}">
 
@@ -202,6 +206,16 @@
             <p>
                 <strong>Reunião:</strong>
                 <c:out value="${reuniao.titulo}"/>
+            </p>
+
+            <p>
+                <strong>Descrição:</strong>
+                <c:out value="${reuniao.descricao}"/>
+            </p>
+
+            <p>
+                <strong>Local:</strong>
+                <c:out value="${reuniao.localReuniao}"/>
             </p>
 
             <p>
@@ -234,7 +248,7 @@
 
                 <p class="descricao">
                     Ainda não existem horários disponíveis
-                    para calcular o resultado desta reunião.
+                    para calcular os resultados desta reunião.
                 </p>
 
             </c:when>
@@ -246,7 +260,7 @@
 
                 <div class="destaque">
 
-                    <h2>Melhor horário até o momento</h2>
+                    <h2>Horário mais bem classificado</h2>
 
                     <p>
                         <strong>Data:</strong>
@@ -386,8 +400,14 @@
                     </p>
 
                     <p>
-                        A ausência de resposta não significa
-                        necessariamente indisponibilidade.
+                        Uma ausência de resposta registrada
+                        não significa necessariamente que
+                        o participante esteja indisponível.
+                    </p>
+
+                    <p>
+                        A classificação poderá mudar enquanto
+                        novas disponibilidades forem registradas.
                     </p>
 
                 </div>
@@ -396,36 +416,39 @@
 
         </c:choose>
 
-        <div class="finalizacao">
+        <c:if test="${not acessoPublico}">
 
-            <h2>Definir horário definitivo</h2>
+            <div class="finalizacao">
 
-            <p>
-                Após analisar os resultados, o proponente
-                pode escolher o horário em que a reunião
-                será realizada.
-            </p>
+                <h2>Definir horário definitivo</h2>
 
-            <p class="descricao">
-                Se a reunião já tiver sido finalizada,
-                você poderá consultar o horário confirmado.
-            </p>
+                <p>
+                    Após analisar os resultados,
+                    o proponente pode escolher o horário
+                    em que a reunião será realizada.
+                </p>
 
-            <a class="botao botao-finalizar"
-               href="${pageContext.request.contextPath}/reunioes/finalizar">
-                Finalizar ou consultar reunião
-            </a>
+                <a class="botao botao-finalizar"
+                   href="${pageContext.request.contextPath}/reunioes/finalizar">
+                    Finalizar ou consultar reunião
+                </a>
 
-        </div>
+            </div>
+
+        </c:if>
 
     </c:if>
 
     <div class="acoes">
 
-        <a class="botao"
-           href="${pageContext.request.contextPath}/reunioes/convidados">
-            Voltar aos convidados
-        </a>
+        <c:if test="${not acessoPublico}">
+
+            <a class="botao"
+               href="${pageContext.request.contextPath}/reunioes/convidados">
+                Voltar aos convidados
+            </a>
+
+        </c:if>
 
         <a class="link"
            href="${pageContext.request.contextPath}/reunioes/nova">
