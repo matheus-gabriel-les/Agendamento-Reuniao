@@ -7,11 +7,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import br.ufpr.tads.agendamento.dao.jdbc.HorarioDAOImpl;
 import br.ufpr.tads.agendamento.model.Disponibilidade;
 import br.ufpr.tads.agendamento.model.Horario;
 import br.ufpr.tads.agendamento.model.Participante;
 import br.ufpr.tads.agendamento.model.RespostaDisponibilidade;
 import br.ufpr.tads.agendamento.service.DisponibilidadeService;
+import br.ufpr.tads.agendamento.service.FinalizacaoService;
 import br.ufpr.tads.agendamento.service.ParticipanteService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -28,6 +30,12 @@ public class DisponibilidadeServlet extends HttpServlet {
 
     private final ParticipanteService participanteService =
             new ParticipanteService();
+
+    private final FinalizacaoService finalizacaoService =
+            new FinalizacaoService();
+
+    private final HorarioDAOImpl horarioDAO =
+            new HorarioDAOImpl();
 
     @Override
     protected void doGet(
@@ -76,23 +84,49 @@ public class DisponibilidadeServlet extends HttpServlet {
                 );
             }
 
-            request.setAttribute("participante", participante);
-            request.setAttribute("horarios", horarios);
+            Long horarioDefinitivoId =
+                    finalizacaoService.buscarHorarioDefinitivo(
+                            participante.getReuniaoId());
+
+            boolean finalizada =
+                    horarioDefinitivoId != null;
+
+            Horario horarioDefinitivo = null;
+
+            if (finalizada) {
+                horarioDefinitivo =
+                        horarioDAO.buscarPorId(
+                                horarioDefinitivoId);
+            }
+
+            request.setAttribute(
+                    "participante",
+                    participante);
+
+            request.setAttribute(
+                    "horarios",
+                    horarios);
 
             request.setAttribute(
                     "respostasPorHorario",
                     respostasPorHorario);
 
-            if (sessao != null) {
-                Object mensagem = sessao.getAttribute(
+            request.setAttribute(
+                    "finalizada",
+                    finalizada);
+
+            request.setAttribute(
+                    "horarioDefinitivo",
+                    horarioDefinitivo);
+
+            Object mensagem =
+                    sessao.getAttribute("mensagemDisponibilidade");
+
+            if (mensagem != null) {
+                request.setAttribute("mensagem", mensagem);
+
+                sessao.removeAttribute(
                         "mensagemDisponibilidade");
-
-                if (mensagem != null) {
-                    request.setAttribute("mensagem", mensagem);
-
-                    sessao.removeAttribute(
-                            "mensagemDisponibilidade");
-                }
             }
 
             abrirPagina(request, response);
@@ -210,7 +244,6 @@ public class DisponibilidadeServlet extends HttpServlet {
             throws ServletException, IOException {
 
         HttpSession sessao = request.getSession(false);
-
         String token = obterToken(sessao);
 
         if (token == null) {
@@ -227,10 +260,13 @@ public class DisponibilidadeServlet extends HttpServlet {
             String valor = request.getParameter("resposta");
 
             if ("REMOVER".equals(valor)) {
+
                 disponibilidadeService.removerResposta(
                         token,
                         horarioId);
+
             } else {
+
                 RespostaDisponibilidade resposta =
                         RespostaDisponibilidade.valueOf(valor);
 
@@ -253,7 +289,9 @@ public class DisponibilidadeServlet extends HttpServlet {
 
             request.setAttribute(
                     "erro",
-                    "Horario ou resposta invalida.");
+                    e instanceof IllegalArgumentException
+                        ? e.getMessage()
+                        : "Horario ou resposta invalida.");
 
             doGet(request, response);
 
@@ -290,8 +328,8 @@ public class DisponibilidadeServlet extends HttpServlet {
             return null;
         }
 
-        Object valor = sessao.getAttribute(
-                "tokenParticipante");
+        Object valor =
+                sessao.getAttribute("tokenParticipante");
 
         if (valor instanceof String) {
             return (String) valor;

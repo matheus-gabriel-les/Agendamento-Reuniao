@@ -20,9 +20,9 @@
         body {
             font-family: Arial, sans-serif;
             background: #f4f6f9;
+            color: #263547;
             margin: 0;
             padding: 24px 15px;
-            color: #263547;
         }
 
         .container {
@@ -65,10 +65,10 @@
         .botao {
             display: inline-block;
             margin-top: 18px;
+            padding: 12px 20px;
             background: #235bb5;
             color: white;
             border: 0;
-            padding: 12px 20px;
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
@@ -80,6 +80,12 @@
             background: #19488f;
         }
 
+        .botao-copiar {
+            margin-top: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
         .botao-resultados {
             background: #21683c;
         }
@@ -88,10 +94,8 @@
             background: #18542f;
         }
 
-        .botao-copiar {
-            margin-top: 8px;
-            padding: 8px 12px;
-            font-size: 13px;
+        .botao-sair {
+            background: #657487;
         }
 
         .mensagem {
@@ -108,6 +112,19 @@
             background: #ffe8e8;
             color: #a32626;
             margin-bottom: 16px;
+        }
+
+        .confirmacao {
+            margin: 22px 0;
+            padding: 20px;
+            background: #e4f5e9;
+            border: 1px solid #b8dfc3;
+            border-radius: 7px;
+            color: #21683c;
+        }
+
+        .confirmacao h2 {
+            margin-top: 0;
         }
 
         .descricao {
@@ -130,14 +147,11 @@
             border-bottom: 1px solid #e4e7eb;
             text-align: left;
             vertical-align: top;
+            overflow-wrap: anywhere;
         }
 
         .tabela th {
             background: #f4f6f9;
-        }
-
-        .tabela td {
-            overflow-wrap: anywhere;
         }
 
         .token {
@@ -158,15 +172,6 @@
             margin-top: 0;
         }
 
-        .aviso {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff7e6;
-            border-radius: 6px;
-            color: #77571a;
-            line-height: 1.6;
-        }
-
         .endereco {
             font-family: monospace;
             overflow-wrap: anywhere;
@@ -176,8 +181,24 @@
             border-radius: 5px;
         }
 
-        .rodape {
+        .aviso {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff7e6;
+            border-radius: 6px;
+            color: #77571a;
+        }
+
+        .acoes {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
             margin-top: 28px;
+        }
+
+        .acoes button {
+            margin-top: 0;
         }
 
         a {
@@ -261,39 +282,89 @@
                 <c:out value="${reuniao.nomeProponente}"/>
             </p>
 
-            <h2>Adicionar convidado</h2>
+            <p>
+                <strong>Situação:</strong>
+                <c:choose>
+                    <c:when test="${finalizada}">
+                        Finalizada
+                    </c:when>
+                    <c:otherwise>
+                        Aberta para respostas
+                    </c:otherwise>
+                </c:choose>
+            </p>
 
-            <form method="post"
-                  action="${pageContext.request.contextPath}/reunioes/convidados">
+            <c:choose>
 
-                <input type="hidden"
-                       name="acao"
-                       value="adicionar">
+                <c:when test="${finalizada}">
 
-                <label for="nome">
-                    Nome do convidado
-                </label>
+                    <div class="confirmacao">
 
-                <input type="text"
-                       id="nome"
-                       name="nome"
-                       maxlength="100">
+                        <h2>Reunião finalizada!</h2>
 
-                <label for="email">
-                    E-mail do convidado *
-                </label>
+                        <p>
+                            O horário definitivo já foi
+                            escolhido pelo proponente.
+                        </p>
 
-                <input type="email"
-                       id="email"
-                       name="email"
-                       maxlength="254"
-                       required>
+                        <p>
+                            Não é possível adicionar ou remover
+                            participantes nem modificar
+                            suas disponibilidades.
+                        </p>
 
-                <button type="submit">
-                    Adicionar convidado
-                </button>
+                        <a class="botao botao-resultados"
+                           href="${pageContext.request.contextPath}/reunioes/finalizar">
+                            Consultar horário confirmado
+                        </a>
 
-            </form>
+                    </div>
+
+                </c:when>
+
+                <c:otherwise>
+
+                    <h2>Adicionar convidado</h2>
+
+                    <form method="post"
+                          action="${pageContext.request.contextPath}/reunioes/convidados">
+
+                        <input type="hidden"
+                               name="acao"
+                               value="adicionar">
+
+                        <input type="hidden"
+                               name="csrfToken"
+                               value="${csrfToken}">
+
+                        <label for="nome">
+                            Nome do convidado
+                        </label>
+
+                        <input type="text"
+                               id="nome"
+                               name="nome"
+                               maxlength="100">
+
+                        <label for="email">
+                            E-mail do convidado *
+                        </label>
+
+                        <input type="email"
+                               id="email"
+                               name="email"
+                               maxlength="254"
+                               required>
+
+                        <button type="submit">
+                            Adicionar convidado
+                        </button>
+
+                    </form>
+
+                </c:otherwise>
+
+            </c:choose>
 
             <h2>Participantes cadastrados</h2>
 
@@ -328,6 +399,7 @@
                                        items="${participantes}">
 
                                 <tr>
+
                                     <td>
                                         <c:out value="${p.nome}"/>
                                     </td>
@@ -358,6 +430,7 @@
                                             Copiar convite
                                         </button>
                                     </td>
+
                                 </tr>
 
                             </c:forEach>
@@ -383,25 +456,25 @@
 
                 <p class="descricao">
                     Cada participante possui um token
-                    individual para registrar suas respostas.
+                    individual para acessar a reunião.
                 </p>
 
                 <p>
-                    <strong>Endereço para responder:</strong>
+                    <strong>Endereço de acesso:</strong>
                 </p>
 
                 <div class="endereco"
                      id="enderecoDisponibilidade"><c:out value="${pageContext.request.contextPath}"/>/reunioes/disponibilidade</div>
 
                 <p class="descricao">
-                    Utilize o botão Copiar convite ao lado
-                    de cada participante. O convite contém
-                    o endereço de acesso e o token individual.
+                    Copie o convite correspondente a cada
+                    participante para compartilhá-lo
+                    manualmente.
                 </p>
 
                 <a class="botao"
                    href="${pageContext.request.contextPath}/reunioes/disponibilidade">
-                    Abrir página de disponibilidade
+                    Abrir página do participante
                 </a>
 
             </div>
@@ -411,8 +484,8 @@
                 <h2>Resultados da reunião</h2>
 
                 <p class="descricao">
-                    Consulte os horários com maior
-                    disponibilidade entre os participantes.
+                    Consulte a classificação dos horários
+                    e as disponibilidades registradas.
                 </p>
 
                 <a class="botao botao-resultados"
@@ -427,8 +500,9 @@
                 <strong>Importante:</strong>
 
                 <p>
-                    Compartilhe cada token apenas com
-                    o participante correspondente.
+                    Os tokens individuais devem ser
+                    compartilhados somente com seus
+                    respectivos participantes.
                 </p>
 
                 <p>
@@ -438,9 +512,30 @@
 
                 <p>
                     O sistema ainda não envia e-mails
-                    automaticamente. Os convites devem
-                    ser encaminhados manualmente.
+                    automaticamente.
                 </p>
+
+            </div>
+
+            <div class="acoes">
+
+                <a href="${pageContext.request.contextPath}/reunioes/nova">
+                    Criar outra reunião
+                </a>
+
+                <form method="post"
+                      action="${pageContext.request.contextPath}/reunioes/convidados">
+
+                    <input type="hidden"
+                           name="acao"
+                           value="sair">
+
+                    <button class="botao-sair"
+                            type="submit">
+                        Sair do gerenciamento
+                    </button>
+
+                </form>
 
             </div>
 
@@ -448,21 +543,16 @@
 
     </c:choose>
 
-    <div class="rodape">
-
-        <a href="${pageContext.request.contextPath}/reunioes/nova">
-            Criar outra reunião
-        </a>
-
-    </div>
-
 </div>
 
 <script>
     async function copiarConvite(botao) {
 
         const linha = botao.closest("tr");
-        const token = linha.querySelector(".token").textContent.trim();
+
+        const token = linha.querySelector(
+            ".token"
+        ).textContent.trim();
 
         const caminho = document.getElementById(
             "enderecoDisponibilidade"
@@ -473,11 +563,19 @@
             window.location.origin
         ).href;
 
+        const finalizada =
+            document.querySelector(".confirmacao") !== null;
+
+        const texto =
+            finalizada
+            ? "A reuniao ja foi finalizada. Consulte o horario confirmado."
+            : "Voce foi convidado para informar sua disponibilidade.";
+
         const convite =
-            "Voce foi convidado para informar sua disponibilidade.\n\n" +
+            texto + "\n\n" +
             "Acesse: " + endereco + "\n\n" +
             "Seu token individual: " + token + "\n\n" +
-            "Informe o token na pagina para responder.";
+            "Informe o token na pagina para acessar a reuniao.";
 
         const mensagem = document.getElementById(
             "mensagemCopia"
@@ -487,7 +585,7 @@
             await navigator.clipboard.writeText(convite);
 
             mensagem.textContent =
-                "Convite copiado. Agora voce pode compartilha-lo.";
+                "Convite copiado com sucesso.";
 
         } catch (erro) {
             mensagem.textContent =

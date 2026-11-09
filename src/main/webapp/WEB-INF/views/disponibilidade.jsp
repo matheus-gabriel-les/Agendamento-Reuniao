@@ -36,7 +36,6 @@
 
         h1 {
             margin-top: 0;
-            color: #263547;
         }
 
         h2 {
@@ -109,6 +108,31 @@
             margin: 8px 0;
         }
 
+        .confirmacao {
+            background: #e4f5e9;
+            border: 1px solid #b8dfc3;
+            color: #21683c;
+            padding: 20px;
+            border-radius: 7px;
+            margin-top: 24px;
+        }
+
+        .confirmacao h2 {
+            margin-top: 0;
+        }
+
+        .confirmacao p {
+            margin: 8px 0;
+        }
+
+        .aviso {
+            background: #fff7e6;
+            color: #77571a;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
         .tabela-container {
             overflow-x: auto;
             margin-top: 20px;
@@ -147,6 +171,22 @@
             white-space: nowrap;
         }
 
+        .status {
+            font-weight: bold;
+        }
+
+        .status-sim {
+            color: #21683c;
+        }
+
+        .status-talvez {
+            color: #946200;
+        }
+
+        .status-sem {
+            color: #657487;
+        }
+
         .rodape {
             margin-top: 30px;
         }
@@ -157,10 +197,6 @@
 
         .acesso button {
             margin-top: 18px;
-        }
-
-        a {
-            color: #235bb5;
         }
 
         @media (max-width: 600px) {
@@ -200,7 +236,8 @@
 
             <p class="descricao">
                 Informe seu token individual para visualizar
-                os horários e registrar sua disponibilidade.
+                os horários da reunião e registrar
+                sua disponibilidade.
             </p>
 
             <form class="acesso"
@@ -251,23 +288,98 @@
                     <c:out value="${participante.reuniaoId}"/>
                 </p>
 
+                <p>
+                    <strong>Situação:</strong>
+
+                    <c:choose>
+                        <c:when test="${finalizada}">
+                            Finalizada
+                        </c:when>
+                        <c:otherwise>
+                            Aguardando definição do horário
+                        </c:otherwise>
+                    </c:choose>
+                </p>
+
             </div>
 
-            <h2>Horários disponíveis</h2>
+            <c:if test="${finalizada}">
 
-            <p class="descricao">
-                Selecione SIM quando puder participar,
-                TALVEZ quando não tiver certeza ou
-                Sem resposta para retirar sua seleção.
-                Clique em Salvar em cada horário alterado.
-            </p>
+                <div class="confirmacao">
+
+                    <h2>Reunião finalizada!</h2>
+
+                    <p>
+                        O proponente já definiu o horário
+                        em que a reunião será realizada.
+                    </p>
+
+                    <c:if test="${not empty horarioDefinitivo}">
+
+                        <p>
+                            <strong>Data confirmada:</strong>
+                            <c:out value="${horarioDefinitivo.dia}"/>
+                        </p>
+
+                        <c:if test="${not empty horarioDefinitivo.periodo}">
+                            <p>
+                                <strong>Período:</strong>
+                                <c:out value="${horarioDefinitivo.periodo}"/>
+                            </p>
+                        </c:if>
+
+                        <c:if test="${not empty horarioDefinitivo.horaInicio}">
+                            <p>
+                                <strong>Início:</strong>
+                                <c:out value="${horarioDefinitivo.horaInicio}"/>
+                            </p>
+                        </c:if>
+
+                        <c:if test="${not empty horarioDefinitivo.horaFim}">
+                            <p>
+                                <strong>Fim:</strong>
+                                <c:out value="${horarioDefinitivo.horaFim}"/>
+                            </p>
+                        </c:if>
+
+                    </c:if>
+
+                </div>
+
+                <div class="aviso">
+                    Esta reunião já foi finalizada.
+                    As respostas anteriores podem ser
+                    consultadas, mas não podem mais ser alteradas.
+                </div>
+
+            </c:if>
+
+            <h2>
+                <c:choose>
+                    <c:when test="${finalizada}">
+                        Histórico das disponibilidades
+                    </c:when>
+                    <c:otherwise>
+                        Horários disponíveis
+                    </c:otherwise>
+                </c:choose>
+            </h2>
+
+            <c:if test="${not finalizada}">
+                <p class="descricao">
+                    Selecione SIM quando puder participar,
+                    TALVEZ quando não tiver certeza ou
+                    Sem resposta para remover sua seleção.
+                    Clique em Salvar em cada horário alterado.
+                </p>
+            </c:if>
 
             <c:choose>
 
                 <c:when test="${empty horarios}">
 
                     <p class="descricao">
-                        Esta reunião ainda não possui horários.
+                        Esta reunião não possui horários cadastrados.
                     </p>
 
                 </c:when>
@@ -304,9 +416,7 @@
                                             <c:when test="${not empty horario.periodo}">
                                                 <c:out value="${horario.periodo}"/>
                                             </c:when>
-                                            <c:otherwise>
-                                                -
-                                            </c:otherwise>
+                                            <c:otherwise>-</c:otherwise>
                                         </c:choose>
                                     </td>
 
@@ -315,9 +425,7 @@
                                             <c:when test="${not empty horario.horaInicio}">
                                                 <c:out value="${horario.horaInicio}"/>
                                             </c:when>
-                                            <c:otherwise>
-                                                -
-                                            </c:otherwise>
+                                            <c:otherwise>-</c:otherwise>
                                         </c:choose>
                                     </td>
 
@@ -326,57 +434,87 @@
                                             <c:when test="${not empty horario.horaFim}">
                                                 <c:out value="${horario.horaFim}"/>
                                             </c:when>
-                                            <c:otherwise>
-                                                -
-                                            </c:otherwise>
+                                            <c:otherwise>-</c:otherwise>
                                         </c:choose>
                                     </td>
 
                                     <td>
 
-                                        <form class="resposta-form"
-                                              method="post"
-                                              action="${pageContext.request.contextPath}/reunioes/disponibilidade">
+                                        <c:choose>
 
-                                            <input type="hidden"
-                                                   name="acao"
-                                                   value="responder">
+                                            <c:when test="${finalizada}">
 
-                                            <input type="hidden"
-                                                   name="horarioId"
-                                                   value="${horario.id}">
+                                                <c:choose>
+                                                    <c:when test="${respostasPorHorario[horario.id] eq 'SIM'}">
+                                                        <span class="status status-sim">
+                                                            SIM
+                                                        </span>
+                                                    </c:when>
 
-                                            <select name="resposta"
-                                                    aria-label="Disponibilidade do horário">
+                                                    <c:when test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
+                                                        <span class="status status-talvez">
+                                                            TALVEZ
+                                                        </span>
+                                                    </c:when>
 
-                                                <option value="REMOVER"
-                                                    <c:if test="${empty respostasPorHorario[horario.id]}">
-                                                        selected
-                                                    </c:if>>
-                                                    Sem resposta
-                                                </option>
+                                                    <c:otherwise>
+                                                        <span class="status status-sem">
+                                                            Sem resposta
+                                                        </span>
+                                                    </c:otherwise>
+                                                </c:choose>
 
-                                                <option value="SIM"
-                                                    <c:if test="${respostasPorHorario[horario.id] eq 'SIM'}">
-                                                        selected
-                                                    </c:if>>
-                                                    SIM
-                                                </option>
+                                            </c:when>
 
-                                                <option value="TALVEZ"
-                                                    <c:if test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
-                                                        selected
-                                                    </c:if>>
-                                                    TALVEZ
-                                                </option>
+                                            <c:otherwise>
 
-                                            </select>
+                                                <form class="resposta-form"
+                                                      method="post"
+                                                      action="${pageContext.request.contextPath}/reunioes/disponibilidade">
 
-                                            <button type="submit">
-                                                Salvar
-                                            </button>
+                                                    <input type="hidden"
+                                                           name="acao"
+                                                           value="responder">
 
-                                        </form>
+                                                    <input type="hidden"
+                                                           name="horarioId"
+                                                           value="${horario.id}">
+
+                                                    <select name="resposta"
+                                                            aria-label="Disponibilidade do horário">
+
+                                                        <option value="REMOVER"
+                                                            <c:if test="${empty respostasPorHorario[horario.id]}">
+                                                                selected
+                                                            </c:if>>
+                                                            Sem resposta
+                                                        </option>
+
+                                                        <option value="SIM"
+                                                            <c:if test="${respostasPorHorario[horario.id] eq 'SIM'}">
+                                                                selected
+                                                            </c:if>>
+                                                            SIM
+                                                        </option>
+
+                                                        <option value="TALVEZ"
+                                                            <c:if test="${respostasPorHorario[horario.id] eq 'TALVEZ'}">
+                                                                selected
+                                                            </c:if>>
+                                                            TALVEZ
+                                                        </option>
+
+                                                    </select>
+
+                                                    <button type="submit">
+                                                        Salvar
+                                                    </button>
+
+                                                </form>
+
+                                            </c:otherwise>
+
+                                        </c:choose>
 
                                     </td>
 

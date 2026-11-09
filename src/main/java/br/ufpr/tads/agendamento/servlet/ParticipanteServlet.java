@@ -3,9 +3,11 @@ package br.ufpr.tads.agendamento.servlet;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.UUID;
 
 import br.ufpr.tads.agendamento.dao.jdbc.ReuniaoDAOImpl;
 import br.ufpr.tads.agendamento.model.Reuniao;
+import br.ufpr.tads.agendamento.service.FinalizacaoService;
 import br.ufpr.tads.agendamento.service.ParticipanteService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -20,18 +22,21 @@ public class ParticipanteServlet extends HttpServlet {
     private final ParticipanteService participanteService =
             new ParticipanteService();
 
+    private final FinalizacaoService finalizacaoService =
+            new FinalizacaoService();
+
     private final ReuniaoDAOImpl reuniaoDAO =
             new ReuniaoDAOImpl();
 
     @Override
-    protected void doGet(HttpServletRequest request,
-                         HttpServletResponse response)
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
 
         response.setCharacterEncoding("UTF-8");
 
         HttpSession sessao = request.getSession(false);
-
         Long reuniaoId = obterReuniaoId(sessao);
 
         if (reuniaoId == null) {
@@ -46,35 +51,66 @@ public class ParticipanteServlet extends HttpServlet {
             if (reuniao == null) {
                 sessao.removeAttribute("adminReuniaoId");
 
-                request.setAttribute("erro",
+                request.setAttribute(
+                        "erro",
                         "Reuniao nao encontrada.");
 
                 abrirPagina(request, response);
                 return;
             }
 
+            Long horarioDefinitivoId =
+                    finalizacaoService.buscarHorarioDefinitivo(
+                            reuniaoId);
+
+            boolean finalizada =
+                    horarioDefinitivoId != null;
+
             request.setAttribute("reuniao", reuniao);
 
-            request.setAttribute("participantes",
+            request.setAttribute(
+                    "finalizada",
+                    finalizada);
+
+            request.setAttribute(
+                    "participantes",
                     participanteService.listarPorReuniao(
                             reuniaoId));
 
-            if (sessao != null) {
-                Object mensagem =
-                        sessao.getAttribute("mensagemConvidados");
+            String csrfToken =
+                    (String) sessao.getAttribute(
+                            "csrfConvidados");
 
-                if (mensagem != null) {
-                    request.setAttribute("mensagem", mensagem);
-                    sessao.removeAttribute("mensagemConvidados");
-                }
+            if (csrfToken == null) {
+                csrfToken = UUID.randomUUID().toString();
+
+                sessao.setAttribute(
+                        "csrfConvidados",
+                        csrfToken);
+            }
+
+            request.setAttribute("csrfToken", csrfToken);
+
+            Object mensagem =
+                    sessao.getAttribute("mensagemConvidados");
+
+            if (mensagem != null) {
+                request.setAttribute(
+                        "mensagem",
+                        mensagem);
+
+                sessao.removeAttribute(
+                        "mensagemConvidados");
             }
 
             abrirPagina(request, response);
 
         } catch (SQLException e) {
-            registrarErro(request, e);
 
-            request.setAttribute("erro",
+            registrarErro(e);
+
+            request.setAttribute(
+                    "erro",
                     "Nao foi possivel consultar os convidados.");
 
             abrirPagina(request, response);
@@ -82,8 +118,9 @@ public class ParticipanteServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest request,
-                          HttpServletResponse response)
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
 
         request.setCharacterEncoding("UTF-8");
@@ -100,6 +137,11 @@ public class ParticipanteServlet extends HttpServlet {
             return;
         }
 
+        if ("sair".equals(acao)) {
+            sair(request, response);
+            return;
+        }
+
         response.sendError(
                 HttpServletResponse.SC_BAD_REQUEST,
                 "Acao invalida.");
@@ -113,8 +155,11 @@ public class ParticipanteServlet extends HttpServlet {
         String tokenAdmin =
                 request.getParameter("tokenAdmin");
 
-        if (tokenAdmin == null || tokenAdmin.isBlank()) {
-            request.setAttribute("erro",
+        if (tokenAdmin == null
+                || tokenAdmin.isBlank()) {
+
+            request.setAttribute(
+                    "erro",
                     "Informe o token administrativo.");
 
             abrirPagina(request, response);
@@ -127,7 +172,9 @@ public class ParticipanteServlet extends HttpServlet {
                             tokenAdmin.trim());
 
             if (reuniao == null) {
-                request.setAttribute("erro",
+
+                request.setAttribute(
+                        "erro",
                         "Token administrativo invalido.");
 
                 abrirPagina(request, response);
@@ -136,18 +183,24 @@ public class ParticipanteServlet extends HttpServlet {
 
             HttpSession sessao = request.getSession();
 
+            request.changeSessionId();
+
             sessao.setAttribute(
                     "adminReuniaoId",
                     reuniao.getId());
+
+            sessao.removeAttribute("csrfConvidados");
 
             response.sendRedirect(
                     request.getContextPath()
                     + "/reunioes/convidados");
 
         } catch (SQLException e) {
-            registrarErro(request, e);
 
-            request.setAttribute("erro",
+            registrarErro(e);
+
+            request.setAttribute(
+                    "erro",
                     "Nao foi possivel acessar a reuniao.");
 
             abrirPagina(request, response);
@@ -160,13 +213,29 @@ public class ParticipanteServlet extends HttpServlet {
             throws ServletException, IOException {
 
         HttpSession sessao = request.getSession(false);
-
         Long reuniaoId = obterReuniaoId(sessao);
 
         if (reuniaoId == null) {
+
             response.sendError(
                     HttpServletResponse.SC_FORBIDDEN,
                     "Acesso administrativo necessario.");
+            return;
+        }
+
+        String csrfEsperado =
+                (String) sessao.getAttribute(
+                        "csrfConvidados");
+
+        String csrfRecebido =
+                request.getParameter("csrfToken");
+
+        if (csrfEsperado == null
+                || !csrfEsperado.equals(csrfRecebido)) {
+
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Formulario invalido ou expirado.");
             return;
         }
 
@@ -174,6 +243,14 @@ public class ParticipanteServlet extends HttpServlet {
         String email = request.getParameter("email");
 
         try {
+            if (finalizacaoService.buscarHorarioDefinitivo(
+                    reuniaoId) != null) {
+
+                throw new IllegalArgumentException(
+                        "Esta reuniao ja foi finalizada. "
+                        + "Nao e possivel adicionar convidados.");
+            }
+
             participanteService.cadastrar(
                     reuniaoId,
                     nome,
@@ -190,18 +267,39 @@ public class ParticipanteServlet extends HttpServlet {
                     + "/reunioes/convidados");
 
         } catch (IllegalArgumentException e) {
+
             request.setAttribute("erro", e.getMessage());
 
             doGet(request, response);
 
         } catch (SQLException e) {
-            registrarErro(request, e);
 
-            request.setAttribute("erro",
+            registrarErro(e);
+
+            request.setAttribute(
+                    "erro",
                     "Nao foi possivel cadastrar o convidado.");
 
             doGet(request, response);
         }
+    }
+
+    private void sair(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws IOException {
+
+        HttpSession sessao = request.getSession(false);
+
+        if (sessao != null) {
+            sessao.removeAttribute("adminReuniaoId");
+            sessao.removeAttribute("csrfConvidados");
+            sessao.removeAttribute("csrfFinalizacao");
+        }
+
+        response.sendRedirect(
+                request.getContextPath()
+                + "/reunioes/convidados");
     }
 
     private Long obterReuniaoId(HttpSession sessao) {
@@ -210,8 +308,8 @@ public class ParticipanteServlet extends HttpServlet {
             return null;
         }
 
-        Object valor = sessao.getAttribute(
-                "adminReuniaoId");
+        Object valor =
+                sessao.getAttribute("adminReuniaoId");
 
         if (valor instanceof Long) {
             return (Long) valor;
@@ -230,9 +328,7 @@ public class ParticipanteServlet extends HttpServlet {
                 .forward(request, response);
     }
 
-    private void registrarErro(
-            HttpServletRequest request,
-            SQLException e) {
+    private void registrarErro(SQLException e) {
 
         getServletContext().log(
                 "Erro no gerenciamento de convidados", e);
