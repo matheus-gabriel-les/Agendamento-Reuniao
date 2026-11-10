@@ -603,6 +603,9 @@
                     <input type="hidden"
                            name="acao"
                            value="sair">
+                    <input type="hidden"
+                           name="csrfToken"
+                           value="<c:out value='${csrfToken}'/>">
 
                     <button type="submit"
                             class="botao-sair">

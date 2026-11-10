@@ -291,17 +291,35 @@ public class ParticipanteServlet extends HttpServlet {
 
         HttpSession sessao = request.getSession(false);
 
-        if (sessao != null) {
-            sessao.removeAttribute("adminReuniaoId");
-            sessao.removeAttribute("csrfConvidados");
-            sessao.removeAttribute("csrfFinalizacao");
+        if (sessao == null) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Sessao administrativa inexistente.");
+            return;
         }
+
+        String csrfEsperado =
+                (String) sessao.getAttribute("csrfConvidados");
+
+        String csrfRecebido =
+                request.getParameter("csrfToken");
+
+        if (csrfEsperado == null
+                || !csrfEsperado.equals(csrfRecebido)) {
+
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Formulario invalido ou expirado.");
+            return;
+        }
+
+        // Encerra a sessao e invalida seus tokens.
+        sessao.invalidate();
 
         response.sendRedirect(
                 request.getContextPath()
                 + "/reunioes/convidados");
     }
-
     private Long obterReuniaoId(HttpSession sessao) {
 
         if (sessao == null) {
