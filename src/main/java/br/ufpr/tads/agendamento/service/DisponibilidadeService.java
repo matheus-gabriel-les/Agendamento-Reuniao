@@ -60,21 +60,17 @@ public class DisponibilidadeService {
         }
 
         try (Connection conexao = Conexao.conectar()) {
-
             conexao.setAutoCommit(false);
 
             try {
-
                 Participante participante =
                         buscarParticipante(token, conexao);
 
                 bloquearReuniao(
-                        participante.getReuniaoId(),
-                        conexao);
+                        participante.getReuniaoId(), conexao);
 
                 verificarReuniaoAberta(
-                        participante.getReuniaoId(),
-                        conexao);
+                        participante.getReuniaoId(), conexao);
 
                 verificarHorario(
                         horarioId,
@@ -94,17 +90,16 @@ public class DisponibilidadeService {
                     stmt.setLong(1, participante.getId());
                     stmt.setLong(2, horarioId);
                     stmt.setString(3, resposta.name());
-
                     stmt.executeUpdate();
                 }
 
-                String sqlAtualizacao =
+                String atualizacao =
                         "UPDATE participante "
                         + "SET respondido_em = CURRENT_TIMESTAMP "
                         + "WHERE id = ?";
 
                 try (PreparedStatement stmt =
-                        conexao.prepareStatement(sqlAtualizacao)) {
+                        conexao.prepareStatement(atualizacao)) {
 
                     stmt.setLong(1, participante.getId());
                     stmt.executeUpdate();
@@ -113,13 +108,7 @@ public class DisponibilidadeService {
                 conexao.commit();
 
             } catch (SQLException | RuntimeException e) {
-
-                try {
-                    conexao.rollback();
-                } catch (SQLException erroRollback) {
-                    e.addSuppressed(erroRollback);
-                }
-
+                rollback(conexao, e);
                 throw e;
             }
         }
@@ -133,68 +122,62 @@ public class DisponibilidadeService {
         validarHorarioId(horarioId);
 
         try (Connection conexao = Conexao.conectar()) {
-
             conexao.setAutoCommit(false);
 
             try {
-
                 Participante participante =
                         buscarParticipante(token, conexao);
 
                 bloquearReuniao(
-                        participante.getReuniaoId(),
-                        conexao);
+                        participante.getReuniaoId(), conexao);
 
                 verificarReuniaoAberta(
-                        participante.getReuniaoId(),
-                        conexao);
+                        participante.getReuniaoId(), conexao);
 
                 verificarHorario(
                         horarioId,
                         participante.getReuniaoId(),
                         conexao);
 
-                String sqlExcluir =
+                String excluir =
                         "DELETE FROM disponibilidade "
                         + "WHERE participante_id = ? "
                         + "AND horario_id = ?";
 
                 try (PreparedStatement stmt =
-                        conexao.prepareStatement(sqlExcluir)) {
+                        conexao.prepareStatement(excluir)) {
 
                     stmt.setLong(1, participante.getId());
                     stmt.setLong(2, horarioId);
-
                     stmt.executeUpdate();
                 }
 
-                String sqlContagem =
-                        "SELECT COUNT(*) "
-                        + "FROM disponibilidade "
+                String contagem =
+                        "SELECT COUNT(*) FROM disponibilidade "
                         + "WHERE participante_id = ?";
 
-                long quantidadeRespostas;
+                long quantidade;
 
                 try (PreparedStatement stmt =
-                        conexao.prepareStatement(sqlContagem)) {
+                        conexao.prepareStatement(contagem)) {
 
                     stmt.setLong(1, participante.getId());
 
                     try (ResultSet rs = stmt.executeQuery()) {
                         rs.next();
-                        quantidadeRespostas = rs.getLong(1);
+                        quantidade = rs.getLong(1);
                     }
                 }
 
-                if (quantidadeRespostas == 0) {
+                if (quantidade == 0) {
 
-                    String sqlLimpar =
+                    String limpar =
                             "UPDATE participante "
                             + "SET respondido_em = NULL "
                             + "WHERE id = ?";
 
                     try (PreparedStatement stmt =
-                            conexao.prepareStatement(sqlLimpar)) {
+                            conexao.prepareStatement(limpar)) {
 
                         stmt.setLong(1, participante.getId());
                         stmt.executeUpdate();
@@ -204,13 +187,7 @@ public class DisponibilidadeService {
                 conexao.commit();
 
             } catch (SQLException | RuntimeException e) {
-
-                try {
-                    conexao.rollback();
-                } catch (SQLException erroRollback) {
-                    e.addSuppressed(erroRollback);
-                }
-
+                rollback(conexao, e);
                 throw e;
             }
         }
@@ -225,7 +202,7 @@ public class DisponibilidadeService {
         }
 
         Participante participante =
-                participanteDAO.buscarPorToken(token);
+                participanteDAO.buscarPorToken(token.trim());
 
         if (participante == null) {
             throw new IllegalArgumentException(
@@ -246,11 +223,8 @@ public class DisponibilidadeService {
         }
 
         String sql =
-                "SELECT id, reuniao_id "
-                + "FROM participante WHERE token = ?";
-
-        Long participanteId = null;
-        Long reuniaoId = null;
+                "SELECT id, reuniao_id FROM participante "
+                + "WHERE token = ?";
 
         try (PreparedStatement stmt =
                 conexao.prepareStatement(sql)) {
@@ -260,23 +234,20 @@ public class DisponibilidadeService {
             try (ResultSet rs = stmt.executeQuery()) {
 
                 if (rs.next()) {
-                    participanteId = rs.getLong("id");
-                    reuniaoId = rs.getLong("reuniao_id");
+                    Participante participante =
+                            new Participante();
+
+                    participante.setId(rs.getLong("id"));
+                    participante.setReuniaoId(
+                            rs.getLong("reuniao_id"));
+
+                    return participante;
                 }
             }
         }
 
-        if (participanteId == null) {
-            throw new IllegalArgumentException(
-                    "Participante nao encontrado.");
-        }
-
-        Participante participante = new Participante();
-
-        participante.setId(participanteId);
-        participante.setReuniaoId(reuniaoId);
-
-        return participante;
+        throw new IllegalArgumentException(
+                "Participante nao encontrado.");
     }
 
     private void bloquearReuniao(
@@ -294,7 +265,6 @@ public class DisponibilidadeService {
             stmt.setLong(1, reuniaoId);
 
             try (ResultSet rs = stmt.executeQuery()) {
-
                 if (!rs.next()) {
                     throw new IllegalArgumentException(
                             "Reuniao nao encontrada.");
@@ -309,9 +279,8 @@ public class DisponibilidadeService {
             throws SQLException {
 
         String sql =
-                "SELECT horario_id "
-                + "FROM reuniao_finalizacao "
-                + "WHERE reuniao_id = ?";
+                "SELECT horario_id FROM reuniao_finalizacao "
+                + "WHERE reuniao_id = ? FOR UPDATE";
 
         try (PreparedStatement stmt =
                 conexao.prepareStatement(sql)) {
@@ -319,7 +288,6 @@ public class DisponibilidadeService {
             stmt.setLong(1, reuniaoId);
 
             try (ResultSet rs = stmt.executeQuery()) {
-
                 if (rs.next()) {
                     throw new IllegalArgumentException(
                             "Esta reuniao ja foi finalizada. "
@@ -347,7 +315,6 @@ public class DisponibilidadeService {
             stmt.setLong(2, reuniaoId);
 
             try (ResultSet rs = stmt.executeQuery()) {
-
                 if (!rs.next()) {
                     throw new IllegalArgumentException(
                             "O horario nao pertence a reuniao "
@@ -362,6 +329,17 @@ public class DisponibilidadeService {
         if (horarioId == null || horarioId <= 0) {
             throw new IllegalArgumentException(
                     "Horario invalido.");
+        }
+    }
+
+    private void rollback(
+            Connection conexao,
+            Exception erro) {
+
+        try {
+            conexao.rollback();
+        } catch (SQLException e) {
+            erro.addSuppressed(e);
         }
     }
 }
