@@ -7,19 +7,32 @@ import java.sql.SQLException;
 
 public class Conexao {
 
-    private static final String URL =
-            "jdbc:mysql://localhost:3306/agendamento_reunioes";
+    private static final String HOST =
+            "jdbc:mysql://localhost:3306/";
+
+    private static final String BANCO_PADRAO =
+            "agendamento_reunioes";
 
     public static Connection conectar() throws SQLException {
 
         String usuario = System.getenv("DB_USER");
         String senha = System.getenv("DB_PASSWORD");
+        String banco = System.getenv("DB_NAME");
 
         if (usuario == null || usuario.isBlank()
                 || senha == null || senha.isEmpty()) {
 
             throw new SQLException(
                     "Configure DB_USER e DB_PASSWORD.");
+        }
+
+        if (banco == null || banco.isBlank()) {
+            banco = BANCO_PADRAO;
+        }
+
+        if (!banco.matches("[a-zA-Z0-9_]+")) {
+            throw new SQLException(
+                    "Nome de banco de dados invalido.");
         }
 
         try {
@@ -30,6 +43,8 @@ public class Conexao {
         }
 
         return DriverManager.getConnection(
-                URL, usuario, senha);
+                HOST + banco,
+                usuario,
+                senha);
     }
 }
